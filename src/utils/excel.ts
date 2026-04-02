@@ -75,3 +75,44 @@ export const getNodeDepth = (nodes: MappingNode[], targetId: string, currentDept
   }
   return -1;
 };
+
+// 根据表头行解析目标列（用于模板）
+export const parseTargetColumnsFromRows = (
+  rows: ExcelRow[],
+  headerRowStart: number,
+  headerRowEnd: number
+): TargetColumn[] => {
+  if (rows.length === 0) return [];
+
+  // 确保索引在有效范围内
+  const start = Math.max(0, Math.min(headerRowStart, rows.length - 1));
+  const end = Math.max(start, Math.min(headerRowEnd, rows.length - 1));
+
+  // 单行表头（简单情况）
+  if (start === end) {
+    const headerRow = rows[start];
+    return headerRow.DataList.map((cell, index) => ({
+      id: `col-${index}`,
+      label: cell || `列${index + 1}`
+    }));
+  }
+
+  // 多行表头（合并多行内容）
+  const columnCount = rows[start]?.DataList.length || 0;
+  const columns: TargetColumn[] = [];
+
+  for (let colIndex = 0; colIndex < columnCount; colIndex++) {
+    const labels: string[] = [];
+    for (let rowIndex = start; rowIndex <= end; rowIndex++) {
+      const cell = rows[rowIndex]?.DataList[colIndex];
+      if (cell && cell.trim()) labels.push(cell.trim());
+    }
+
+    columns.push({
+      id: `col-${colIndex}`,
+      label: labels.join(' - ') || `列${colIndex + 1}`
+    });
+  }
+
+  return columns;
+};
