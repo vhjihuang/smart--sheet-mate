@@ -5,10 +5,11 @@ import type {
   TargetColumn, 
   SourceColumn, 
   MappingNode, 
-  ExcelRow 
+  ExcelRow,
+  TemplateResponse
 } from "@/types";
 import { defaultTargetColumns, MAX_NEST_LEVEL } from "@/constants";
-import { generateId, parseSourceColumns, getNodeDepth } from "@/utils/excel";
+import { generateId, parseSourceColumns, getNodeDepth, parseTargetColumnsFromRows } from "@/utils/excel";
 import { safeCallParse } from "@/utils/bridge";
 
 export const useExcelMapping = () => {
@@ -24,9 +25,11 @@ export const useExcelMapping = () => {
   const [currentSheetIndex, setCurrentSheetIndex] = useState<number>(0);
   const [last, setLast] = useState<number>(0);
   const [rows, setRows] = useState<ExcelRow[]>([]);
+  const [isSheetLoaded, setIsSheetLoaded] = useState<boolean>(false);
   
   const [headerRowStart, setHeaderRowStart] = useState<number>(0);
   const [headerRowEnd, setHeaderRowEnd] = useState<number>(0);
+  const [isHeaderConfirmed, setIsHeaderConfirmed] = useState<boolean>(false);
   
   const [templatePath, setTemplatePath] = useState<string | null>(null);
   const [templateRows, setTemplateRows] = useState<ExcelRow[]>([]);
@@ -261,6 +264,7 @@ export const useExcelMapping = () => {
           }
           if (data.Data.Last !== undefined) setLast(data.Data.Last);
         }
+        setIsSheetLoaded(true);
         toast.success(data.Message || "加载成功");
       } else {
         toast.error(data.Message || "加载失败");
@@ -276,10 +280,9 @@ export const useExcelMapping = () => {
     if (value === null) return;
     const page = value + 1;
     setCurrentSheetIndex(page);
-    setMappings({});
-    setHeaderRowStart(0);
-    setHeaderRowEnd(0);
-    await loadSheetData(FilePath, page, last);
+    setRows([]);
+    setIsSheetLoaded(false);
+    setIsHeaderConfirmed(false);
   };
 
   const handleImport = async () => {
@@ -287,10 +290,13 @@ export const useExcelMapping = () => {
       const resp = await safeCallParse("Excel_Original_Select");
       if (resp.SelectStatus === 1) {
         setFilePath(resp.FilePath);
+        setSheets([]);
+        setRows([]);
         setMappings({});
         setHeaderRowStart(0);
         setHeaderRowEnd(0);
-        await loadSheetData(resp.FilePath, 0); 
+        setIsSheetLoaded(false);
+        setIsHeaderConfirmed(false);
       } else {
         toast.error(resp.Message || "选择失败");
       }
@@ -299,17 +305,46 @@ export const useExcelMapping = () => {
     }
   };
 
+  const handleLoadFile = async () => {
+    if (!FilePath) {
+      toast.error("请先选择源文件");
+      return;
+    }
+    await loadSheetData(FilePath, currentSheetIndex);
+  };
+
   const handleUploadTemplate = async () => {
     setLoading(true);
     try {
-      const resp = await safeCallParse("Excel_Template_Load");
-      if (resp?.SelectStatus === 1) {
-        setTemplatePath(resp.FilePath || null);
-        if (resp.Data?.Rows) setTemplateRows(resp.Data.Rows);
-        toast.success("模板加载成功");
-      } else {
-        toast.error(resp?.Message || "模板加载失败");
+      const resp = await safeCallParse("Excel_Template_Load") as TemplateResponse;
+      
+      // 检查加载状态
+      if (resp.LoadStatus !== 1) {
+        toast.error(resp.Message || "模板加载失败");
+        return;
       }
+      
+      // 检查 Template 数据是否存在
+      if (!resp.Template) {
+        toast.error("模板数据为空");
+        return;
+      }
+      
+      setTemplatePath(resp.FilePath || null);
+      
+      // 转换模板数据为内部格式
+      if (resp.Template.Sheets?.length > 0) {
+        const firstSheet = resp.Template.Sheets[0];
+        const convertedRows: ExcelRow[] = firstSheet.Rows.map(row => ({
+          Index: row.I,
+          DataList: row.R.map(cell => cell.D)
+        }));
+        setTemplateRows(convertedRows);
+      } else {
+        setTemplateRows([]);
+      }
+      
+      toast.success(resp.Message || "模板加载成功");
     } catch (error) {
       toast.error("模板加载失败");
     } finally {
@@ -330,6 +365,7 @@ export const useExcelMapping = () => {
     if (data.Status === 1) {
       setSourceColumns(parseSourceColumns(rows, headerRowStart, headerRowEnd));
       setMappings({});
+      setIsHeaderConfirmed(true);
       toast.success("表头已确认");
     } else {
       toast.error(data.Message || "表头设置失败");
@@ -345,15 +381,32 @@ export const useExcelMapping = () => {
   };
 
   const confirmTemplateHeader = async () => {
-    const data = await safeCallParse("Excel_SetTemplateHeaderRows", {
-      FilePath: templatePath,
-      HeaderRowStart: templateHeaderRowStart,
-      HeaderRowEnd: templateHeaderRowEnd
-    });
-    if (data.Status === 1) {
-      toast.success("模板表头已确认");
-    } else {
-      toast.error(data.Message || "模板表头设置失败");
+    // 解析模板表头生成 targetColumns
+    const newTargetColumns = parseTargetColumnsFromRows(
+      templateRows,
+      templateHeaderRowStart,
+      templateHeaderRowEnd
+    );
+    setTargetColumns(newTargetColumns);
+
+    // 清空之前的映射（因为列结构变了）
+    setMappings({});
+
+    // 调用后端接口（如果存在）
+    try {
+      const data = await safeCallParse("Excel_SetTemplateHeaderRows", {
+        FilePath: templatePath,
+        HeaderRowStart: templateHeaderRowStart,
+        HeaderRowEnd: templateHeaderRowEnd
+      });
+      if (data.Status === 1) {
+        toast.success("模板表头已确认，目标列已更新");
+      } else {
+        toast.error(data.Message || "模板表头设置失败");
+      }
+    } catch (error) {
+      // 后端接口可能不存在，只显示前端更新成功
+      toast.success("模板表头已确认，目标列已更新");
     }
   };
 
@@ -385,9 +438,12 @@ export const useExcelMapping = () => {
     handleRemove, handleUpdate,
     handleImport, handleSheetChange,
     handleUploadTemplate, handleDownload,
+    handleLoadFile,
     confirmHeader, skipHeader,
     confirmTemplateHeader,
     activeData,
-    isSourceMapped
+    isSourceMapped,
+    isSheetLoaded,
+    isHeaderConfirmed
   };
 };
