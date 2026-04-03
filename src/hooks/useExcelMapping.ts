@@ -6,7 +6,8 @@ import type {
   SourceColumn, 
   MappingNode, 
   ExcelRow,
-  TemplateResponse
+  TemplateResponse,
+  ExportResponse
 } from "@/types";
 import { defaultTargetColumns, MAX_NEST_LEVEL } from "@/constants";
 import { generateId, parseSourceColumns, getNodeDepth, parseTargetColumnsFromRows } from "@/utils/excel";
@@ -352,8 +353,51 @@ export const useExcelMapping = () => {
     }
   };
 
-  const handleDownload = () => {
-    // TODO: Implementation
+  const handleDownload = async () => {
+    if (!isHeaderConfirmed) {
+      toast.error("请先确认源文件表头");
+      return;
+    }
+    if (templateRows.length === 0) {
+      toast.error("请先上传目标模板");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        SourcePath: FilePath,
+        TemplatePath: templatePath,
+        SourceHeaderRows: {
+          Start: headerRowStart,
+          End: headerRowEnd
+        },
+        TemplateHeaderRows: {
+          Start: templateHeaderRowStart,
+          End: templateHeaderRowEnd
+        },
+        CurrentSheetIndex: currentSheetIndex,
+        Mappings: mappings
+      };
+
+      console.log("准备导出，Payload:", payload);
+      
+      // 后端导出功能开发中，暂存逻辑
+      toast.info("导出功能开发中，逻辑已在前端预留");
+      
+      /*
+      const resp = await safeCallParse("Excel_Export", payload) as ExportResponse;
+      if (resp.Status === 1) {
+        toast.success(resp.Message || "导出成功");
+      } else {
+        toast.error(resp.Message || "导出失败");
+      }
+      */
+    } catch (error: any) {
+      toast.error(error.message || "导出异常");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const confirmHeader = async () => {
