@@ -50,3 +50,9 @@ export interface TemplateResponse {
     Sheets: TemplateSheet[];
   };
 }
+
+export interface ExportResponse {
+  Status: number;
+  Message: string;
+  FilePath?: string;
+}
