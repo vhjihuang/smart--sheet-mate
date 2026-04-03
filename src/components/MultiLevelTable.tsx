@@ -40,7 +40,7 @@ export const MultiLevelTable = ({
           key={col.id}
           rowSpan={isLeaf ? maxDepth - currentDepth + 1 : 1}
           colSpan={isLeaf ? 1 : colSpan}
-          className="border border-gray-200 p-2.5 text-center text-[13px] font-medium text-gray-700 bg-gray-50/80"
+          className={`border border-gray-200 p-2.5 text-center text-[13px] font-medium text-gray-700 bg-gray-50/80 ${isLeaf ? "min-w-[140px]" : ""}`}
         >
           {col.label}
         </th>,
@@ -60,7 +60,7 @@ export const MultiLevelTable = ({
 
   return (
     <div className="w-full overflow-x-auto border border-gray-200 rounded-lg">
-      <table className="w-full border-collapse border-hidden table-fixed min-w-[800px]">
+      <table className="w-full border-collapse border-hidden min-w-max">
         <thead>
           {renderHeaderRows(columns, 1)}
         </thead>
@@ -69,7 +69,7 @@ export const MultiLevelTable = ({
             {leafColumns.map((col) => (
               <td
                 key={col.id}
-                className="border border-gray-200 p-2 vertical-top align-top"
+                className="border border-gray-200 p-2 vertical-top align-top min-w-[140px]"
               >
                 <TargetSlot 
                   target={col} 
