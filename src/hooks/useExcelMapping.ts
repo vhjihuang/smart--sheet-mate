@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
-import { toast } from "sonner";
-import type { 
-  TargetColumn, 
-  SourceColumn, 
-  MappingNode, 
+import type {
+  TargetColumn,
+  SourceColumn,
+  MappingNode,
   ExcelRow,
   TemplateResponse,
   ExportResponse
@@ -12,6 +11,7 @@ import type {
 import { defaultTargetColumns, MAX_NEST_LEVEL } from "@/constants";
 import { generateId, parseSourceColumns, getNodeDepth, parseTargetColumnsFromRows } from "@/utils/excel";
 import { safeCallParse } from "@/utils/bridge";
+import { showToast } from "@/utils/toast";
 
 export const useExcelMapping = () => {
   const [mappings, setMappings] = useState<Record<string, MappingNode[]>>({});
@@ -266,12 +266,12 @@ export const useExcelMapping = () => {
           if (data.Data.Last !== undefined) setLast(data.Data.Last);
         }
         setIsSheetLoaded(true);
-        toast.success(data.Message || "加载成功");
-      } else {
-        toast.error(data.Message || "加载失败");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "通信失败");
+      showToast("success", data.Message || "加载成功");
+    } else {
+      showToast("error", data.Message || "加载失败");
+    }
+  } catch (err: any) {
+    showToast("error", err.message || "通信失败");
     } finally {
       setLoading(false);
     }
@@ -299,16 +299,16 @@ export const useExcelMapping = () => {
         setIsSheetLoaded(false);
         setIsHeaderConfirmed(false);
       } else {
-        toast.error(resp.Message || "选择失败");
+        showToast("error", resp.Message || "选择失败");
       }
     } catch (err: any) {
-      toast.error(err.message || "导入失败");
+      showToast("error", err.message || "导入失败");
     }
   };
 
   const handleLoadFile = async () => {
     if (!FilePath) {
-      toast.error("请先选择源文件");
+      showToast("error", "请先选择源文件");
       return;
     }
     await loadSheetData(FilePath, currentSheetIndex);
@@ -321,18 +321,18 @@ export const useExcelMapping = () => {
       
       // 检查加载状态
       if (resp.LoadStatus !== 1) {
-        toast.error(resp.Message || "模板加载失败");
+        showToast("error", resp.Message || "模板加载失败");
         return;
       }
-      
+
       // 检查 Template 数据是否存在
       if (!resp.Template) {
-        toast.error("模板数据为空");
+        showToast("error", "模板数据为空");
         return;
       }
-      
+
       setTemplatePath(resp.FilePath || null);
-      
+
       // 转换模板数据为内部格式
       if (resp.Template.Sheets?.length > 0) {
         const firstSheet = resp.Template.Sheets[0];
@@ -344,10 +344,10 @@ export const useExcelMapping = () => {
       } else {
         setTemplateRows([]);
       }
-      
-      toast.success(resp.Message || "模板加载成功");
+
+      showToast("success", resp.Message || "模板加载成功");
     } catch (error) {
-      toast.error("模板加载失败");
+      showToast("error", "模板加载失败");
     } finally {
       setLoading(false);
     }
@@ -355,11 +355,11 @@ export const useExcelMapping = () => {
 
   const handleDownload = async () => {
     if (!isHeaderConfirmed) {
-      toast.error("请先确认源文件表头");
+      showToast("error", "请先确认源文件表头");
       return;
     }
     if (templateRows.length === 0) {
-      toast.error("请先上传目标模板");
+      showToast("error", "请先上传目标模板");
       return;
     }
 
@@ -381,20 +381,20 @@ export const useExcelMapping = () => {
       };
 
       console.log("准备导出，Payload:", payload);
-      
+
       // 后端导出功能开发中，暂存逻辑
-      toast.info("导出功能开发中，逻辑已在前端预留");
-      
+      showToast("info", "导出功能开发中，逻辑已在前端预留");
+
       /*
       const resp = await safeCallParse("Excel_Export", payload) as ExportResponse;
       if (resp.Status === 1) {
-        toast.success(resp.Message || "导出成功");
+        showToast("success", resp.Message || "导出成功");
       } else {
-        toast.error(resp.Message || "导出失败");
+        showToast("error", resp.Message || "导出失败");
       }
       */
     } catch (error: any) {
-      toast.error(error.message || "导出异常");
+      showToast("error", error.message || "导出异常");
     } finally {
       setLoading(false);
     }
@@ -410,9 +410,9 @@ export const useExcelMapping = () => {
       setSourceColumns(parseSourceColumns(rows, headerRowStart, headerRowEnd));
       setMappings({});
       setIsHeaderConfirmed(true);
-      toast.success("表头已确认");
+      showToast("success", "表头已确认");
     } else {
-      toast.error(data.Message || "表头设置失败");
+      showToast("error", data.Message || "表头设置失败");
     }
   };
 
@@ -421,7 +421,7 @@ export const useExcelMapping = () => {
     setHeaderRowEnd(0);
     setSourceColumns(parseSourceColumns(rows, 0, 0));
     setMappings({});
-    toast.success("已跳过");
+    showToast("success", "已跳过");
   };
 
   const confirmTemplateHeader = async () => {
@@ -444,13 +444,13 @@ export const useExcelMapping = () => {
         HeaderRowEnd: templateHeaderRowEnd
       });
       if (data.Status === 1) {
-        toast.success("模板表头已确认，目标列已更新");
+        showToast("success", "模板表头已确认，目标列已更新");
       } else {
-        toast.error(data.Message || "模板表头设置失败");
+        showToast("error", data.Message || "模板表头设置失败");
       }
     } catch (error) {
       // 后端接口可能不存在，只显示前端更新成功
-      toast.success("模板表头已确认，目标列已更新");
+      showToast("success", "模板表头已确认，目标列已更新");
     }
   };
 
