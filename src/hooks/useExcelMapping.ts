@@ -8,13 +8,16 @@ import type {
   TemplateResponse,
   ExportResponse
 } from "@/types";
-import { defaultTargetColumns, MAX_NEST_LEVEL } from "@/constants";
+import { defaultTargetColumns, MAX_NEST_LEVEL, DEFAULT_SLOT_CONFIG } from "@/constants";
 import { generateId, parseSourceColumns, getNodeDepth, parseTargetColumnsFromRows } from "@/utils/excel";
 import { safeCallParse } from "@/utils/bridge";
 import { showToast } from "@/utils/toast";
+import type { SlotConfig, TransformStep, PreviewData } from "@/types";
 
 export const useExcelMapping = () => {
   const [mappings, setMappings] = useState<Record<string, MappingNode[]>>({});
+  const [slotConfigs, setSlotConfigs] = useState<Record<string, SlotConfig>>({});
+  const [previewData, setPreviewData] = useState<Record<string, string[]>>({});
   const [sourceColumns, setSourceColumns] = useState<SourceColumn[]>([]);
   const [targetColumns, setTargetColumns] = useState<TargetColumn[]>(defaultTargetColumns);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +155,7 @@ export const useExcelMapping = () => {
         id: generateId(),
         sourceId,
         sourceLabel,
-        transform: "",
+        steps: [],
         children: [],
       };
       setMappings((prev) => ({
@@ -175,7 +178,13 @@ export const useExcelMapping = () => {
         return;
       }
 
-      const newNode: MappingNode = { id: generateId(), sourceId, sourceLabel, transform: "", children: [] };
+      const newNode: MappingNode = { 
+        id: generateId(), 
+        sourceId, 
+        sourceLabel, 
+        steps: [], 
+        children: [] 
+      };
       const addChildToParent = (nodes: MappingNode[]): MappingNode[] => {
         return nodes.map((node) => {
           if (node.id === parentId) return { ...node, children: [...node.children, newNode] };
@@ -211,21 +220,75 @@ export const useExcelMapping = () => {
     setError(null);
   };
 
-  const handleUpdate = (id: string, transform: string) => {
-    const findAndUpdateNode = (nodes: MappingNode[], id: string, transform: string): MappingNode[] => {
+  const handleUpdate = (id: string, steps: TransformStep[]) => {
+    const findAndUpdateNode = (nodes: MappingNode[], id: string, steps: TransformStep[]): MappingNode[] => {
       return nodes.map((node) => {
-        if (node.id === id) return { ...node, transform };
-        if (node.children.length > 0) return { ...node, children: findAndUpdateNode(node.children, id, transform) };
+        if (node.id === id) return { ...node, steps };
+        if (node.children.length > 0) return { ...node, children: findAndUpdateNode(node.children, id, steps) };
         return node;
       });
     };
     setMappings((prev) => {
       const newMappings: Record<string, MappingNode[]> = {};
       for (const [tid, nodes] of Object.entries(prev)) {
-        newMappings[tid] = findAndUpdateNode(nodes, id, transform);
+        newMappings[tid] = findAndUpdateNode(nodes, id, steps);
       }
       return newMappings;
     });
+  };
+
+  const handleUpdateSlotConfig = (columnId: string, config: SlotConfig) => {
+    setSlotConfigs(prev => ({
+      ...prev,
+      [columnId]: config
+    }));
+  };
+
+  // -------------------------
+  // 核心：实时预览逻辑 (防抖调用后端)
+  // -------------------------
+  const previewTimer = useRef<any>(null);
+
+  useEffect(() => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    
+    // 只在有映射时尝试预览
+    const hasAnyMapping = Object.values(mappings).some(m => m.length > 0);
+    if (!hasAnyMapping) {
+      setPreviewData({});
+      return;
+    }
+
+    previewTimer.current = setTimeout(() => {
+      fetchPreviewData();
+    }, 600); // 600ms 防抖，避免输入时频繁刷新
+
+    return () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+    };
+  }, [mappings, slotConfigs]);
+
+  const fetchPreviewData = async () => {
+    if (rows.length === 0) return;
+
+    // 准备发送给后端的 Payload
+    // 包含：前几行源数据、当前的映射结构、聚合配置
+    const payload = {
+      SourceSamples: rows.slice(0, 5), // 取前 5 行作为样本
+      Mappings: mappings,
+      SlotConfigs: slotConfigs
+    };
+
+    try {
+      // 预留后端空接口: Preview_Transform
+      const resp = await safeCallParse("Preview_Transform", payload) as { Results: Record<string, string[]> };
+      if (resp && resp.Results) {
+        setPreviewData(resp.Results);
+      }
+    } catch (err) {
+      // 如果后端没实现，这里保持安静
+      console.warn("Backend Preview_Transform not implemented or failed");
+    }
   };
 
   const loadExcelData = async (filePath: string | null, page: number, lastValue?: number) => {
@@ -460,6 +523,8 @@ export const useExcelMapping = () => {
 
   return {
     mappings, setMappings,
+    slotConfigs, setSlotConfigs,
+    previewData, setPreviewData,
     sourceColumns, setSourceColumns,
     targetColumns, setTargetColumns,
     error, setError,
@@ -480,6 +545,7 @@ export const useExcelMapping = () => {
     isUserChange,
     handleDragStart, handleDragEnd,
     handleRemove, handleUpdate,
+    handleUpdateSlotConfig,
     handleImport, handleSheetChange,
     handleUploadTemplate, handleDownload,
     handleLoadFile,
