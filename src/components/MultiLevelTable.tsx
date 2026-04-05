@@ -1,20 +1,27 @@
 import React from "react";
-import type { TargetColumn, MappingNode } from "@/types";
+import { Eye } from "lucide-react";
+import type { TargetColumn, MappingNode, SlotConfig, TransformStep } from "@/types";
 import { getMaxDepth, getLeafColumns, getColumnSpan } from "@/utils/excel";
 import { TargetSlot } from "./TargetSlot";
 
 interface MultiLevelTableProps {
   columns: TargetColumn[];
   mappings: Record<string, MappingNode[]>;
+  previewData?: Record<string, string[]>; 
+  slotConfigs?: Record<string, SlotConfig>;
   onRemove: (id: string) => void;
-  onUpdate: (id: string, transform: string) => void;
+  onUpdate: (id: string, steps: TransformStep[]) => void;
+  onUpdateSlotConfig?: (columnId: string, config: SlotConfig) => void;
 }
 
 export const MultiLevelTable = ({ 
   columns, 
   mappings, 
+  previewData = {},
+  slotConfigs = {},
   onRemove, 
-  onUpdate 
+  onUpdate,
+  onUpdateSlotConfig
 }: MultiLevelTableProps) => {
   const maxDepth = getMaxDepth(columns);
   const leafColumns = getLeafColumns(columns);
@@ -74,11 +81,51 @@ export const MultiLevelTable = ({
                 <TargetSlot 
                   target={col} 
                   mappings={mappings[col.id] || []} 
+                  slotConfig={slotConfigs[col.id]}
                   onRemove={onRemove} 
                   onUpdate={onUpdate} 
+                  onUpdateSlotConfig={onUpdateSlotConfig}
                 />
               </td>
             ))}
+          </tr>
+          {/* 实时预览行 */}
+          <tr className="bg-gray-50/30">
+            {leafColumns.map((col) => {
+              const results = previewData[col.id] || [];
+              const hasMappings = (mappings[col.id]?.length || 0) > 0;
+              
+              return (
+                <td key={`preview-${col.id}`} className="border border-gray-200 p-2.5 min-w-[140px] align-top">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                        <Eye size={10} /> 结果预览
+                      </div>
+                      {!hasMappings && <span className="text-[10px] text-gray-300 italic">未配置</span>}
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
+                      {hasMappings ? (
+                        results.length > 0 ? (
+                          results.slice(0, 3).map((res, idx) => (
+                            <div key={idx} className="px-2 py-1 bg-white border border-gray-100 rounded text-[11px] text-blue-800 font-mono truncate" title={res}>
+                              {res || <span className="text-gray-300 italic">空值</span>}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-2 py-4 text-center border border-dashed border-gray-200 rounded text-[10px] text-gray-300">
+                            等待计算...
+                          </div>
+                        )
+                      ) : (
+                        <div className="h-6" /> // 保持高度一致
+                      )}
+                    </div>
+                  </div>
+                </td>
+              );
+            })}
           </tr>
         </tbody>
       </table>
