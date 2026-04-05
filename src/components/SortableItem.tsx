@@ -1,14 +1,15 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Settings } from "lucide-react";
+import { Settings, X, Plus, Trash2, GripVertical, ChevronRight } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
-import type { MappingNode } from "@/types";
+import type { MappingNode, TransformStep, TransformType } from "@/types";
+import { TEACHER_PRESETS } from "@/constants";
 
 interface SortableItemProps {
   node: MappingNode;
   onRemove: (id: string) => void;
-  onUpdate: (id: string, transform: string) => void;
+  onUpdate: (id: string, steps: TransformStep[]) => void;
   canNest: boolean;
 }
 
@@ -37,84 +38,197 @@ export const SortableItem = ({ node, onRemove, onUpdate, canNest }: SortableItem
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const steps = node.steps || [];
+
+  const handleAddStep = (type: TransformType, params: any = {}) => {
+    onUpdate(node.id, [...steps, { type, params }]);
+  };
+
+  const handleRemoveStep = (index: number) => {
+    const newSteps = [...steps];
+    newSteps.splice(index, 1);
+    onUpdate(node.id, newSteps);
+  };
+
+  const handleUpdateStepParams = (index: number, params: any) => {
+    const newSteps = [...steps];
+    newSteps[index] = { ...newSteps[index], params };
+    onUpdate(node.id, newSteps);
+  };
+
+  const handleApplyPreset = (presetSteps: TransformStep[]) => {
+    onUpdate(node.id, presetSteps);
+  };
+
   return (
     <div ref={setNodeRef} {...attributes} style={style}>
       <div
         ref={canNest ? setDroppableRef : undefined}
-        {...listeners}
-        className={`border border-blue-500 rounded text-white px-2.5 py-1.5 text-xs relative min-w-[60px] cursor-grab ${isOver ? "bg-blue-700" : "bg-blue-500"}`}
+        className={`group border border-blue-500 rounded text-white px-2.5 py-1.5 text-xs relative min-w-[80px] cursor-grab transition-colors ${
+          isOver ? "bg-blue-600 border-blue-400 shadow-md" : "bg-blue-500 border-blue-400"
+        }`}
       >
-        <div className="flex items-center gap-1.5 relative">
-          {node.transform && (
-            <div className="absolute -top-3.5 -left-1.5 bg-amber-400 text-[8px] text-white px-1 rounded-full border border-white shadow-sm flex items-center justify-center font-bold">
-              f(x)
-            </div>
-          )}
-          <span className="truncate max-w-[100px] font-medium" title={node.sourceLabel}>
-            {node.sourceLabel}
-          </span>
+        <div className="flex items-center gap-2 relative">
+          <div {...listeners} className="cursor-grab active:cursor-grabbing opacity-50 hover:opacity-100 p-0.5">
+            <GripVertical size={10} />
+          </div>
+
+          <div className="flex flex-col min-w-0">
+            {steps.length > 0 && (
+              <div className="absolute -top-3.5 -left-1.5 bg-amber-400 text-[8px] text-white px-1.5 py-0.5 rounded-full border border-white shadow-sm font-bold flex items-center gap-0.5 animate-in zoom-in-50">
+                f({steps.length})
+              </div>
+            )}
+            <span className="truncate max-w-[120px] font-semibold" title={node.sourceLabel}>
+              {node.sourceLabel}
+            </span>
+          </div>
           
+          <div className="flex-1" />
+
           <Popover.Root>
             <Popover.Trigger asChild>
               <button
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white/20 hover:bg-white/40 border-none cursor-pointer p-0.5 rounded flex text-white transition-colors"
-                title="转换设置"
+                className="bg-white/10 hover:bg-white/30 p-1 rounded flex text-white transition-all scale-95 hover:scale-100"
+                title="转换流编辑器"
               >
-                <Settings size={11} />
+                <Settings size={12} />
               </button>
             </Popover.Trigger>
             <Popover.Portal>
               <Popover.Content
-                className="bg-white p-3 shadow-xl rounded-xl border border-gray-100 w-52 z-50 animate-in fade-in zoom-in-95"
-                sideOffset={5}
+                className="bg-white p-4 shadow-2xl rounded-2xl border border-gray-100 w-72 z-[100] animate-in fade-in zoom-in-95 data-[side=top]:slide-in-from-bottom-2 data-[side=bottom]:slide-in-from-top-2"
+                sideOffset={8}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between border-b border-gray-50 pb-2 mb-1">
-                    <span className="text-[11px] font-bold text-gray-700">格式转换设置</span>
-                    <span className="text-[10px] text-gray-400 font-mono">ID: {node.id.slice(0, 4)}</span>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                    <div className="flex flex-col">
+                      <h3 className="text-xs font-black text-gray-800 tracking-tight">转换流水线</h3>
+                      <p className="text-[10px] text-gray-400">{node.sourceLabel}</p>
+                    </div>
+                    <Popover.Close className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                      <X size={14} />
+                    </Popover.Close>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">常用预设</label>
-                    <select 
-                      className="w-full text-[11px] bg-gray-50 border border-gray-100 rounded px-1.5 py-1 focus:ring-1 focus:ring-blue-500 outline-none"
-                      value={["trim", "uppercase", "lowercase", "number", "date"].includes(node.transform.toLowerCase()) ? node.transform.toLowerCase() : (node.transform ? "custom" : "")}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "custom") return;
-                        onUpdate(node.id, val);
-                      }}
-                    >
-                      <option value="">(空) 无转换</option>
-                      <option value="trim">去除空格 (Trim)</option>
-                      <option value="uppercase">大写 (UpperCase)</option>
-                      <option value="lowercase">小写 (LowerCase)</option>
-                      <option value="number">保留两位小数 (0.00)</option>
-                      <option value="date">日期格式化 (YYYY-MM-DD)</option>
-                      <option value="custom">-- 自定义逻辑 --</option>
-                    </select>
+                  {/* 常用预设区 */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest px-1">教师专用预设</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TEACHER_PRESETS.map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={() => handleApplyPreset(preset.steps)}
+                          className="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-100 rounded-[4px] text-[10px] font-medium transition-all"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">手动逻辑 (JS/指令)</label>
-                    <input
-                      onPointerDown={(e) => e.stopPropagation()}
-                      className="w-full border border-gray-100 bg-gray-50 rounded p-1.5 text-[11px] font-mono text-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="e.g. value.trim()"
-                      value={node.transform}
-                      onChange={(e) => onUpdate(node.id, e.target.value)}
-                    />
+                  {/* 动态步骤列表 */}
+                  <div className="flex flex-col gap-2.5 min-h-[40px] max-h-64 overflow-y-auto pr-1">
+                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest px-1">处理步骤 (Pipeline)</label>
+                    
+                    {steps.length === 0 ? (
+                      <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl text-[11px] text-gray-300">
+                        暂无处理步骤，点击下方添加
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {steps.map((step, idx) => (
+                          <div key={idx} className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 group/step relative">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center justify-center w-4 h-4 bg-gray-200 text-gray-500 rounded-full text-[9px] font-bold">
+                                  {idx + 1}
+                                </span>
+                                <span className="text-[11px] font-bold text-gray-700">{step.type}</span>
+                              </div>
+                              <button 
+                                onClick={() => handleRemoveStep(idx)}
+                                className="opacity-0 group-hover/step:opacity-100 p-1 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded transition-all"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+
+                            {/* 条件渲染参数输入 */}
+                            {step.type === 'CROP' && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] text-gray-400">起始位置</label>
+                                  <input 
+                                    type="number"
+                                    className="w-full text-xs p-1 border rounded"
+                                    value={step.params.start || 0}
+                                    onChange={(e) => handleUpdateStepParams(idx, { ...step.params, start: parseInt(e.target.value) })}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] text-gray-400">截止位置</label>
+                                  <input 
+                                    type="number"
+                                    className="w-full text-xs p-1 border rounded"
+                                    value={step.params.end || 0}
+                                    onChange={(e) => handleUpdateStepParams(idx, { ...step.params, end: parseInt(e.target.value) })}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {(step.type === 'PREFIX' || step.type === 'SUFFIX') && (
+                              <div className="space-y-1">
+                                <label className="text-[9px] text-gray-400">内容</label>
+                                <input 
+                                  type="text"
+                                  className="w-full text-xs p-1 border rounded"
+                                  value={step.params.text || ""}
+                                  onChange={(e) => handleUpdateStepParams(idx, { ...step.params, text: e.target.value })}
+                                />
+                              </div>
+                            )}
+
+                            {step.type === 'CUSTOM' && (
+                              <div className="space-y-1">
+                                <label className="text-[9px] text-gray-400">脚本代码</label>
+                                <textarea 
+                                  className="w-full text-[10px] font-mono p-1 border rounded h-12"
+                                  value={step.params.code || ""}
+                                  onChange={(e) => handleUpdateStepParams(idx, { ...step.params, code: e.target.value })}
+                                  placeholder="value.trim().toUpperCase()"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="pt-2 mt-1 border-t border-gray-50 flex gap-2">
+                  {/* 添加步骤按钮 */}
+                  <div className="grid grid-cols-3 gap-1.5 border-t border-gray-100 pt-3">
+                    {['CROP', 'TRIM', 'UPPER', 'LOWER', 'PREFIX', 'SUFFIX', 'CUSTOM'].map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => handleAddStep(type as TransformType)}
+                        className="flex items-center justify-center gap-1 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded text-[10px] font-medium transition-all"
+                      >
+                        <Plus size={10} /> {type}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="bg-red-50/50 p-2 rounded-lg mt-1">
                     <button
                       onClick={() => onRemove(node.id)}
-                      className="flex-1 bg-red-50 text-red-600 border border-red-100 rounded py-1.5 text-[10px] font-semibold hover:bg-red-500 hover:text-white transition-all"
+                      className="w-full text-red-500 hover:text-red-700 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1 transition-colors"
                     >
-                      删除映射
+                      <Trash2 size={12} /> 彻底移除该字段映射
                     </button>
                   </div>
                 </div>
