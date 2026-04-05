@@ -20,6 +20,8 @@ function App() {
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
   const {
     mappings,
+    slotConfigs,
+    previewData,
     sourceColumns,
     targetColumns,
     error,
@@ -39,6 +41,7 @@ function App() {
     handleDragEnd,
     handleRemove,
     handleUpdate,
+    handleUpdateSlotConfig,
     handleImport,
     handleSheetChange,
     handleUploadTemplate,
@@ -292,8 +295,11 @@ function App() {
                 <MultiLevelTable
                   columns={targetColumns}
                   mappings={mappings}
+                  previewData={previewData}
+                  slotConfigs={slotConfigs}
                   onRemove={handleRemove}
                   onUpdate={handleUpdate}
+                  onUpdateSlotConfig={handleUpdateSlotConfig}
                 />
               </div>
             </section>
