@@ -1,6 +1,6 @@
 import React from "react";
 import { Eye } from "lucide-react";
-import type { TargetColumn, MappingNode, SlotConfig, TransformStep } from "@/types";
+import type { TargetColumn, MappingNode, SlotConfig, TransformStep, SourceColumn } from "@/types";
 import { getMaxDepth, getLeafColumns, getColumnSpan } from "@/utils/excel";
 import { TargetSlot } from "./TargetSlot";
 
@@ -9,8 +9,10 @@ interface MultiLevelTableProps {
   mappings: Record<string, MappingNode[]>;
   previewData?: Record<string, string[]>; 
   slotConfigs?: Record<string, SlotConfig>;
+  firstRow?: string[];
+  sourceColumns: SourceColumn[];
   onRemove: (id: string) => void;
-  onUpdate: (id: string, steps: TransformStep[]) => void;
+  onUpdate: (id: string, steps: TransformStep[], forceText?: boolean) => void;
   onUpdateSlotConfig?: (columnId: string, config: SlotConfig) => void;
 }
 
@@ -19,6 +21,8 @@ export const MultiLevelTable = ({
   mappings, 
   previewData = {},
   slotConfigs = {},
+  firstRow = [],
+  sourceColumns,
   onRemove, 
   onUpdate,
   onUpdateSlotConfig
@@ -82,6 +86,8 @@ export const MultiLevelTable = ({
                   target={col} 
                   mappings={mappings[col.id] || []} 
                   slotConfig={slotConfigs[col.id]}
+                  firstRow={firstRow}
+                  sourceColumns={sourceColumns}
                   onRemove={onRemove} 
                   onUpdate={onUpdate} 
                   onUpdateSlotConfig={onUpdateSlotConfig}
