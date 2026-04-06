@@ -41,7 +41,17 @@ export interface MappingNode {
   sourceId: string;
   sourceLabel: string;
   steps: TransformStep[]; // 从单一 transform 升级为流水线 steps
+  forceText?: boolean;    // 【物理硬化】开关：强制该列在写入 Excel 时设为文本格式 (@)
   children: MappingNode[]; // 保留嵌套逻辑
+}
+
+// 对应用户提出的最终生成协议
+export interface TransformRule {
+  targetColId: string;     // 目标列 ID
+  targetName: string;      // 目标列名
+  mappings: MappingNode[]; // 该列下的所有源字段映射 (支持多对一)
+  slotConfig: SlotConfig;  // 该插槽的合并/自定义逻辑
+  forceText: boolean;      // 深度锁定格式开关
 }
 
 export interface ExcelRow {
