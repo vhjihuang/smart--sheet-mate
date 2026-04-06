@@ -13,7 +13,7 @@ export const TEACHER_PRESETS: { label: string; steps: TransformStep[] }[] = [
   {
     label: "姓名脱敏 (*)",
     steps: [
-      { type: 'CROP', params: { start: 0, end: 1 } },
+      { type: 'CROP', params: { start: 0, length: 1 } },
       { type: 'SUFFIX', params: { text: "*" } },
     ],
   },
@@ -37,9 +37,9 @@ export const TEACHER_PRESETS: { label: string; steps: TransformStep[] }[] = [
     ],
   },
   {
-    label: "学号加24级前缀",
+    label: "学籍号加G前缀",
     steps: [
-      { type: 'PREFIX', params: { text: "2024-" } },
+      { type: 'PREFIX', params: { text: "G" } },
     ],
   },
   {
@@ -49,6 +49,12 @@ export const TEACHER_PRESETS: { label: string; steps: TransformStep[] }[] = [
       { type: 'UPPER', params: {} },
     ],
   },
+];
+
+export const CROP_SHORTCUTS = [
+  { label: "生日 (7-14位)", start: 6, length: 8 },
+  { label: "性别 (17位)", start: 16, length: 1 },
+  { label: "区划 (1-6位)", start: 0, length: 6 },
 ];
 
 export const defaultTargetColumns: TargetColumn[] = [
