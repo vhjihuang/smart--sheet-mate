@@ -5,14 +5,13 @@ import type {
   SourceColumn,
   MappingNode,
   ExcelRow,
-  TemplateResponse,
-  ExportResponse
+  TemplateResponse
 } from "@/types";
-import { defaultTargetColumns, MAX_NEST_LEVEL, DEFAULT_SLOT_CONFIG } from "@/constants";
-import { generateId, parseSourceColumns, getNodeDepth, parseTargetColumnsFromRows } from "@/utils/excel";
+import { defaultTargetColumns, MAX_NEST_LEVEL } from "@/constants";
+import { generateId, parseSourceColumns, getNodeDepth, parseTargetColumnsFromRows, getLeafColumns } from "@/utils/excel";
 import { safeCallParse } from "@/utils/bridge";
 import { showToast } from "@/utils/toast";
-import type { SlotConfig, TransformStep, PreviewData } from "@/types";
+import type { SlotConfig, TransformStep } from "@/types";
 
 export const useExcelMapping = () => {
   const [mappings, setMappings] = useState<Record<string, MappingNode[]>>({});
@@ -168,7 +167,7 @@ export const useExcelMapping = () => {
     if (overId.startsWith("mapping-")) {
       const parentId = overId.replace("mapping-", "");
       let parentDepth = -1;
-      for (const [_tid, nodes] of Object.entries(mappings)) {
+      for (const [, nodes] of Object.entries(mappings)) {
         parentDepth = getNodeDepth(nodes, parentId);
         if (parentDepth >= 0) break;
       }
@@ -212,26 +211,32 @@ export const useExcelMapping = () => {
     };
     setMappings((prev) => {
       const newMappings: Record<string, MappingNode[]> = {};
-      for (const [_tid, nodes] of Object.entries(prev)) {
-        newMappings[_tid] = findAndRemoveNode(nodes, id);
+      for (const [tid, nodes] of Object.entries(prev)) {
+        newMappings[tid] = findAndRemoveNode(nodes, id);
       }
       return newMappings;
     });
     setError(null);
   };
 
-  const handleUpdate = (id: string, steps: TransformStep[]) => {
-    const findAndUpdateNode = (nodes: MappingNode[], id: string, steps: TransformStep[]): MappingNode[] => {
+  const handleUpdate = (id: string, steps: TransformStep[], forceText?: boolean) => {
+    const findAndUpdateNode = (nodes: MappingNode[], id: string, steps: TransformStep[], forceText?: boolean): MappingNode[] => {
       return nodes.map((node) => {
-        if (node.id === id) return { ...node, steps };
-        if (node.children.length > 0) return { ...node, children: findAndUpdateNode(node.children, id, steps) };
+        if (node.id === id) {
+          return { 
+            ...node, 
+            steps, 
+            forceText: forceText !== undefined ? forceText : node.forceText 
+          };
+        }
+        if (node.children.length > 0) return { ...node, children: findAndUpdateNode(node.children, id, steps, forceText) };
         return node;
       });
     };
     setMappings((prev) => {
       const newMappings: Record<string, MappingNode[]> = {};
       for (const [tid, nodes] of Object.entries(prev)) {
-        newMappings[tid] = findAndUpdateNode(nodes, id, steps);
+        newMappings[tid] = findAndUpdateNode(nodes, id, steps, forceText);
       }
       return newMappings;
     });
@@ -283,7 +288,16 @@ export const useExcelMapping = () => {
       // 预留后端空接口: Preview_Transform
       const resp = await safeCallParse("Preview_Transform", payload) as { Results: Record<string, string[]> };
       if (resp && resp.Results) {
-        setPreviewData(resp.Results);
+        // 边界防御：检查预览结果中是否包含类似科学计数法的长数字
+        const adjustedResults = { ...resp.Results };
+        Object.keys(adjustedResults).forEach(key => {
+          const samples = adjustedResults[key] || [];
+          const hasSciNotation = samples.some(s => s && (s.length > 11 && /^\d+$/.test(s) || /e\+/i.test(s)));
+          if (hasSciNotation && !mappings[key]?.some(n => n.forceText)) {
+            console.warn(`检测到目标列 ${key} 包含长数字，建议开启物理硬化`);
+          }
+        });
+        setPreviewData(adjustedResults);
       }
     } catch (err) {
       // 如果后端没实现，这里保持安静
@@ -440,7 +454,18 @@ export const useExcelMapping = () => {
           End: templateHeaderRowEnd
         },
         CurrentSheetIndex: currentSheetIndex,
-        Mappings: mappings
+        // 将内部映射结构转换为转换规则协议 (TransformRule[])
+        TransformRules: Object.entries(mappings).map(([tid, nodes]) => {
+          const leafCols = getLeafColumns(targetColumns);
+          const targetCol = leafCols.find((c: TargetColumn) => c.id === tid);
+          return {
+            targetColId: tid,
+            targetName: targetCol?.label || "",
+            mappings: nodes,
+            slotConfig: slotConfigs[tid] || { type: 'JOIN', separator: '' },
+            forceText: nodes.some(n => n.forceText)
+          };
+        })
       };
 
       console.log("准备导出，Payload:", payload);
