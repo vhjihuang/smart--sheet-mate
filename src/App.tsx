@@ -297,6 +297,8 @@ function App() {
                   mappings={mappings}
                   previewData={previewData}
                   slotConfigs={slotConfigs}
+                  firstRow={rows[0]?.DataList || []}
+                  sourceColumns={sourceColumns}
                   onRemove={handleRemove}
                   onUpdate={handleUpdate}
                   onUpdateSlotConfig={handleUpdateSlotConfig}
