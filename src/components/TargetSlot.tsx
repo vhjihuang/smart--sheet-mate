@@ -1,16 +1,19 @@
+import React from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Settings, MousePointer2 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
-import type { TargetColumn, MappingNode, SlotConfig } from "@/types";
+import type { TargetColumn, MappingNode, SlotConfig, TransformStep, SourceColumn } from "@/types";
 import { SortableItem } from "./SortableItem";
 
 interface TargetSlotProps {
   target: TargetColumn;
   mappings: MappingNode[];
   slotConfig?: SlotConfig;
+  firstRow?: string[];   // 源数据的第一行，用于预览
+  sourceColumns: SourceColumn[];
   onRemove: (id: string) => void;
-  onUpdate: (id: string, steps: any[]) => void;
+  onUpdate: (id: string, steps: TransformStep[], forceText?: boolean) => void;
   onUpdateSlotConfig?: (columnId: string, config: SlotConfig) => void;
 }
 
@@ -18,6 +21,8 @@ export const TargetSlot = ({
   target, 
   mappings, 
   slotConfig = { type: 'JOIN', separator: '' },
+  firstRow = [],
+  sourceColumns,
   onRemove, 
   onUpdate,
   onUpdateSlotConfig
@@ -107,15 +112,22 @@ export const TargetSlot = ({
             items={mappings.map((m) => m.id)} 
             strategy={verticalListSortingStrategy}
           >
-            {mappings.map((node) => (
-              <SortableItem 
-                key={node.id} 
-                node={node} 
-                onRemove={onRemove} 
-                onUpdate={onUpdate} 
-                canNest={true} 
-              />
-            ))}
+            {mappings.map((node) => {
+              // 寻找该 sourceId 对应的样本值
+              const colIndex = sourceColumns.findIndex(c => c.id === node.sourceId);
+              const sampleValue = colIndex !== -1 ? firstRow[colIndex] : undefined;
+
+              return (
+                <SortableItem 
+                  key={node.id} 
+                  node={node} 
+                  sampleValue={sampleValue}
+                  onRemove={onRemove} 
+                  onUpdate={onUpdate} 
+                  canNest={true} 
+                />
+              );
+            })}
           </SortableContext>
         )}
       </div>
