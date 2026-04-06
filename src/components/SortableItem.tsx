@@ -1,19 +1,20 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Settings, X, Plus, Trash2, GripVertical, ChevronRight } from "lucide-react";
+import { Settings, X, Trash2, GripVertical, Wand2, ShieldCheck, Scissors, Type, ChevronRight } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import type { MappingNode, TransformStep, TransformType } from "@/types";
-import { TEACHER_PRESETS } from "@/constants";
+import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
 
 interface SortableItemProps {
   node: MappingNode;
+  sampleValue?: string; // 来自源数据的第一行样本
   onRemove: (id: string) => void;
-  onUpdate: (id: string, steps: TransformStep[]) => void;
+  onUpdate: (id: string, steps: TransformStep[], forceText?: boolean) => void;
   canNest: boolean;
 }
 
-export const SortableItem = ({ node, onRemove, onUpdate, canNest }: SortableItemProps) => {
+export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onUpdate, canNest }: SortableItemProps) => {
   const { 
     attributes, 
     listeners, 
@@ -38,48 +39,95 @@ export const SortableItem = ({ node, onRemove, onUpdate, canNest }: SortableItem
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const steps = node.steps || [];
+  const steps = useMemo(() => node.steps || [], [node.steps]);
+  const forceText = node.forceText || false;
 
-  const handleAddStep = (type: TransformType, params: any = {}) => {
-    onUpdate(node.id, [...steps, { type, params }]);
+  // -------------------------
+  // 辅助函数：提取平铺的配置
+  // -------------------------
+  const prefix = useMemo(() => steps.find(s => s.type === 'PREFIX')?.params.text || "", [steps]);
+  const suffix = useMemo(() => steps.find(s => s.type === 'SUFFIX')?.params.text || "", [steps]);
+  const cropStart = useMemo(() => steps.find(s => s.type === 'CROP')?.params.start ?? null, [steps]);
+  const cropLength = useMemo(() => steps.find(s => s.type === 'CROP')?.params.length ?? null, [steps]);
+  const isTrim = useMemo(() => steps.some(s => s.type === 'TRIM'), [steps]);
+  const isUpper = useMemo(() => steps.some(s => s.type === 'UPPER'), [steps]);
+
+  // -------------------------
+  // 本地预览引擎 (简易 JS 实现)
+  // -------------------------
+  const transformedPreview = useMemo(() => {
+    let val = sampleValue;
+    if (isTrim) val = val.trim();
+    
+    // 裁剪逻辑
+    if (cropStart !== null && cropLength !== null) {
+      val = val.substring(cropStart, Math.min(val.length, cropStart + cropLength));
+    }
+    
+    if (isUpper) val = val.toUpperCase();
+    return `${prefix}${val}${suffix}`;
+  }, [sampleValue, steps, prefix, suffix, cropStart, cropLength, isTrim, isUpper]);
+
+  // -------------------------
+  // 统一更新逻辑
+  // -------------------------
+  const updateConfig = (updates: { steps?: TransformStep[], forceText?: boolean }) => {
+    onUpdate(node.id, updates.steps ?? steps, updates.forceText ?? forceText);
   };
 
-  const handleRemoveStep = (index: number) => {
-    const newSteps = [...steps];
-    newSteps.splice(index, 1);
-    onUpdate(node.id, newSteps);
+  const setPrefix = (val: string) => {
+    const otherSteps = steps.filter(s => s.type !== 'PREFIX');
+    updateConfig({ steps: val ? [{ type: 'PREFIX', params: { text: val } }, ...otherSteps] : otherSteps });
   };
 
-  const handleUpdateStepParams = (index: number, params: any) => {
-    const newSteps = [...steps];
-    newSteps[index] = { ...newSteps[index], params };
-    onUpdate(node.id, newSteps);
+  const setSuffix = (val: string) => {
+    const otherSteps = steps.filter(s => s.type !== 'SUFFIX');
+    updateConfig({ steps: val ? [...otherSteps, { type: 'SUFFIX', params: { text: val } }] : otherSteps });
   };
 
+  const setCrop = (start: number | null, length: number | null) => {
+    const otherSteps = steps.filter(s => s.type !== 'CROP');
+    if (start === null || length === null) {
+      updateConfig({ steps: otherSteps });
+    } else {
+      updateConfig({ steps: [...otherSteps, { type: 'CROP', params: { start, length } }] });
+    }
+  };
+
+  const toggleStep = (type: TransformType) => {
+    const exists = steps.some(s => s.type === type);
+    if (exists) {
+      updateConfig({ steps: steps.filter(s => s.type !== type) });
+    } else {
+      updateConfig({ steps: [...steps, { type, params: {} }] });
+    }
+  };
+
+  // 常用预设快捷逻辑
   const handleApplyPreset = (presetSteps: TransformStep[]) => {
-    onUpdate(node.id, presetSteps);
+    updateConfig({ steps: presetSteps });
   };
 
   return (
     <div ref={setNodeRef} {...attributes} style={style}>
       <div
         ref={canNest ? setDroppableRef : undefined}
-        className={`group border border-blue-500 rounded text-white px-2.5 py-1.5 text-xs relative min-w-[80px] cursor-grab transition-colors ${
-          isOver ? "bg-blue-600 border-blue-400 shadow-md" : "bg-blue-500 border-blue-400"
+        className={`group border border-emerald-500 rounded-lg text-white px-3 py-2 text-xs relative min-w-[100px] cursor-grab transition-all hover:shadow-lg ${
+          isOver ? "bg-emerald-600 border-emerald-400 scale-[1.02]" : "bg-emerald-500 border-emerald-400"
         }`}
       >
         <div className="flex items-center gap-2 relative">
           <div {...listeners} className="cursor-grab active:cursor-grabbing opacity-50 hover:opacity-100 p-0.5">
-            <GripVertical size={10} />
+            <GripVertical size={11} />
           </div>
 
           <div className="flex flex-col min-w-0">
             {steps.length > 0 && (
-              <div className="absolute -top-3.5 -left-1.5 bg-amber-400 text-[8px] text-white px-1.5 py-0.5 rounded-full border border-white shadow-sm font-bold flex items-center gap-0.5 animate-in zoom-in-50">
-                f({steps.length})
+              <div className="absolute -top-4 -left-1.5 bg-amber-400 text-[9px] text-white px-1.5 py-0.5 rounded-full border border-white shadow-sm font-black flex items-center gap-0.5 animate-in zoom-in-50">
+                <Wand2 size={8} /> FACTORY({steps.length})
               </div>
             )}
-            <span className="truncate max-w-[120px] font-semibold" title={node.sourceLabel}>
+            <span className="truncate max-w-[120px] font-bold tracking-tight" title={node.sourceLabel}>
               {node.sourceLabel}
             </span>
           </div>
@@ -91,144 +139,157 @@ export const SortableItem = ({ node, onRemove, onUpdate, canNest }: SortableItem
               <button
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white/10 hover:bg-white/30 p-1 rounded flex text-white transition-all scale-95 hover:scale-100"
-                title="转换流编辑器"
+                className="bg-white/20 hover:bg-white/40 p-1.5 rounded-md flex text-white transition-all scale-95 hover:scale-100"
+                title="转换工厂"
               >
-                <Settings size={12} />
+                <Settings size={13} />
               </button>
             </Popover.Trigger>
             <Popover.Portal>
               <Popover.Content
-                className="bg-white p-4 shadow-2xl rounded-2xl border border-gray-100 w-72 z-[100] animate-in fade-in zoom-in-95 data-[side=top]:slide-in-from-bottom-2 data-[side=bottom]:slide-in-from-top-2"
-                sideOffset={8}
+                className="bg-white p-5 shadow-[0_10px_40px_rgba(0,0,0,0.15)] rounded-3xl border border-gray-100 w-80 z-[100] animate-in fade-in zoom-in-95"
+                sideOffset={10}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                    <div className="flex flex-col">
-                      <h3 className="text-xs font-black text-gray-800 tracking-tight">转换流水线</h3>
-                      <p className="text-[10px] text-gray-400">{node.sourceLabel}</p>
+                <div className="flex flex-col gap-5">
+                  {/* Header: Preview */}
+                  <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">实时效果预览</span>
+                        <Popover.Close className="p-1 hover:bg-gray-200 rounded-full transition-colors text-gray-400">
+                          <X size={14} />
+                        </Popover.Close>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="text-gray-400 truncate max-w-[80px]">{sampleValue}</span>
+                        <ChevronRight size={10} className="text-emerald-400" />
+                        <span className="text-emerald-600 font-black truncate">{transformedPreview}</span>
+                      </div>
                     </div>
-                    <Popover.Close className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
-                      <X size={14} />
-                    </Popover.Close>
                   </div>
 
-                  {/* 常用预设区 */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest px-1">教师专用预设</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {TEACHER_PRESETS.map((preset) => (
+                  {/* Component A: Addon (补充组件) */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest flex items-center gap-1.5">
+                      <Type size={10} /> 补充组件 (Addon)
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <input 
+                        type="text" 
+                        placeholder="前缀"
+                        className="w-16 h-8 text-[11px] px-2 border border-blue-100 rounded-lg bg-blue-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                        value={prefix}
+                        onChange={(e) => setPrefix(e.target.value)}
+                      />
+                      <div className="flex-1 h-8 flex items-center justify-center bg-gray-100 rounded-lg text-[10px] text-gray-400 font-bold border border-gray-200 px-2 truncate">
+                        {node.sourceLabel}
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="后缀"
+                        className="w-16 h-8 text-[11px] px-2 border border-blue-100 rounded-lg bg-blue-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
+                        value={suffix}
+                        onChange={(e) => setSuffix(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Component B: Smart Crop (智能裁剪) */}
+                  <div className="space-y-2 pb-1 border-b border-gray-50">
+                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest flex items-center gap-1.5">
+                      <Scissors size={10} /> 智能裁剪 (Extract)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <span className="text-[9px] text-gray-400 pl-1">开始位置</span>
+                        <input 
+                          type="number" 
+                          className="w-full h-8 px-2 text-[11px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          value={cropStart ?? ""}
+                          onChange={(e) => setCrop(e.target.value ? parseInt(e.target.value) : null, cropLength)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[9px] text-gray-400 pl-1">长度</span>
+                        <input 
+                          type="number" 
+                          className="w-full h-8 px-2 text-[11px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          value={cropLength ?? ""}
+                          onChange={(e) => setCrop(cropStart, e.target.value ? parseInt(e.target.value) : null)}
+                          placeholder="全部"
+                        />
+                      </div>
+                    </div>
+                    {/* Shortcuts */}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {CROP_SHORTCUTS.map(sc => (
                         <button
-                          key={preset.label}
-                          onClick={() => handleApplyPreset(preset.steps)}
-                          className="px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-100 rounded-[4px] text-[10px] font-medium transition-all"
+                          key={sc.label}
+                          onClick={() => setCrop(sc.start, sc.length)}
+                          className="px-1.5 py-0.5 bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white border border-amber-100 rounded-md text-[9px] font-bold transition-all"
                         >
-                          {preset.label}
+                          {sc.label}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* 动态步骤列表 */}
-                  <div className="flex flex-col gap-2.5 min-h-[40px] max-h-64 overflow-y-auto pr-1">
-                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest px-1">处理步骤 (Pipeline)</label>
-                    
-                    {steps.length === 0 ? (
-                      <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl text-[11px] text-gray-300">
-                        暂无处理步骤，点击下方添加
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {steps.map((step, idx) => (
-                          <div key={idx} className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 group/step relative">
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <span className="flex items-center justify-center w-4 h-4 bg-gray-200 text-gray-500 rounded-full text-[9px] font-bold">
-                                  {idx + 1}
-                                </span>
-                                <span className="text-[11px] font-bold text-gray-700">{step.type}</span>
-                              </div>
-                              <button 
-                                onClick={() => handleRemoveStep(idx)}
-                                className="opacity-0 group-hover/step:opacity-100 p-1 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded transition-all"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </div>
-
-                            {/* 条件渲染参数输入 */}
-                            {step.type === 'CROP' && (
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] text-gray-400">起始位置</label>
-                                  <input 
-                                    type="number"
-                                    className="w-full text-xs p-1 border rounded"
-                                    value={step.params.start || 0}
-                                    onChange={(e) => handleUpdateStepParams(idx, { ...step.params, start: parseInt(e.target.value) })}
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] text-gray-400">截止位置</label>
-                                  <input 
-                                    type="number"
-                                    className="w-full text-xs p-1 border rounded"
-                                    value={step.params.end || 0}
-                                    onChange={(e) => handleUpdateStepParams(idx, { ...step.params, end: parseInt(e.target.value) })}
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {(step.type === 'PREFIX' || step.type === 'SUFFIX') && (
-                              <div className="space-y-1">
-                                <label className="text-[9px] text-gray-400">内容</label>
-                                <input 
-                                  type="text"
-                                  className="w-full text-xs p-1 border rounded"
-                                  value={step.params.text || ""}
-                                  onChange={(e) => handleUpdateStepParams(idx, { ...step.params, text: e.target.value })}
-                                />
-                              </div>
-                            )}
-
-                            {step.type === 'CUSTOM' && (
-                              <div className="space-y-1">
-                                <label className="text-[9px] text-gray-400">脚本代码</label>
-                                <textarea 
-                                  className="w-full text-[10px] font-mono p-1 border rounded h-12"
-                                  value={step.params.code || ""}
-                                  onChange={(e) => handleUpdateStepParams(idx, { ...step.params, code: e.target.value })}
-                                  placeholder="value.trim().toUpperCase()"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  {/* Presets Grid */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest px-1">常用业务方案</label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {TEACHER_PRESETS.map((p) => (
+                        <button
+                          key={p.label}
+                          onClick={() => handleApplyPreset(p.steps)}
+                          className="px-2 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg text-[9px] font-bold transition-all truncate"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* 添加步骤按钮 */}
-                  <div className="grid grid-cols-3 gap-1.5 border-t border-gray-100 pt-3">
-                    {['CROP', 'TRIM', 'UPPER', 'LOWER', 'PREFIX', 'SUFFIX', 'CUSTOM'].map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => handleAddStep(type as TransformType)}
-                        className="flex items-center justify-center gap-1 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded text-[10px] font-medium transition-all"
-                      >
-                        <Plus size={10} /> {type}
-                      </button>
-                    ))}
+                  {/* Component C: Clean (去重/格式) */}
+                  <div className="flex gap-1.5 pt-1">
+                    <button
+                      onClick={() => toggleStep('TRIM')}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+                        isTrim ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100"
+                      }`}
+                    >
+                      去空格 (Trim)
+                    </button>
+                    <button
+                      onClick={() => toggleStep('UPPER')}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+                        isUpper ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100"
+                      }`}
+                    >
+                      转大写 (Upper)
+                    </button>
                   </div>
 
-                  <div className="bg-red-50/50 p-2 rounded-lg mt-1">
+                  {/* Footer: Hardening & Remove */}
+                  <div className="pt-2 mt-1 border-t border-gray-50 space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-2xl border border-blue-100 transition-colors hover:bg-blue-50 cursor-pointer" 
+                         onClick={() => updateConfig({ forceText: !forceText })}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${forceText ? "bg-emerald-500 text-white shadow-sm" : "bg-white border-2 border-blue-200"}`}>
+                        {forceText && <ShieldCheck size={12} />}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-black text-blue-700">物理硬化 (深度锁定格式)</span>
+                        <span className="text-[9px] text-blue-400">强制导出为文本，防止身份证/学前0丢失</span>
+                      </div>
+                    </div>
+
                     <button
                       onClick={() => onRemove(node.id)}
-                      className="w-full text-red-500 hover:text-red-700 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1 transition-colors"
+                      className="w-full text-red-400 hover:text-red-600 flex items-center justify-center gap-1.5 text-[10px] font-bold py-1 transition-colors"
                     >
-                      <Trash2 size={12} /> 彻底移除该字段映射
+                      <Trash2 size={12} /> 撤销该字段映射
                     </button>
                   </div>
                 </div>
