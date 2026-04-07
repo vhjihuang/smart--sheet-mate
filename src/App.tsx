@@ -134,6 +134,15 @@ function App() {
                       </Button>
                     </>
                   )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setIsConfigCollapsed(true)} 
+                    className="text-gray-400 hover:text-gray-600 h-8 ml-auto text-xs gap-1"
+                    title="收起配置面板"
+                  >
+                    <ChevronUp size={14} /> 收起
+                  </Button>
                 </div>
                 {rows.length > 0 && (
                   <div className="pt-4">
