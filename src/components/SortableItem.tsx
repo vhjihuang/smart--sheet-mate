@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Settings, X, Trash2, GripVertical, Wand2, ShieldCheck, Scissors, Type, ChevronRight } from "lucide-react";
+import { Settings, X, Trash2, GripVertical, Wand2, ShieldCheck, Scissors, Type, ChevronRight, Eye } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import type { MappingNode, TransformStep, TransformType } from "@/types";
 import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
@@ -161,23 +161,6 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col gap-5">
-                  {/* Header: Preview */}
-                  <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">实时效果预览</span>
-                        <Popover.Close className="p-1 hover:bg-gray-200 rounded-full transition-colors text-gray-400">
-                          <X size={14} />
-                        </Popover.Close>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span className="text-gray-400 truncate max-w-[80px]">{sampleValue}</span>
-                        <ChevronRight size={10} className="text-emerald-400" />
-                        <span className="text-emerald-600 font-black truncate">{transformedPreview}</span>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Component A: Addon (补充组件) */}
                   <div className="space-y-2">
                     <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest flex items-center gap-1.5">
@@ -282,6 +265,18 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
 
                   {/* Footer: Hardening & Remove */}
                   <div className="pt-2 mt-1 border-t border-gray-50 space-y-3">
+                    <button
+                      onClick={() => {
+                        const previewEl = document.querySelector('[data-preview-row]');
+                        previewEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        previewEl?.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2');
+                        setTimeout(() => previewEl?.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2'), 1500);
+                      }}
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-[11px] font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Eye size={12} /> 查看预览结果 ↓
+                    </button>
+
                     <div className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-2xl border border-blue-100 transition-colors hover:bg-blue-50 cursor-pointer" 
                          onClick={() => updateConfig({ forceText: !forceText })}>
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${forceText ? "bg-emerald-500 text-white shadow-sm" : "bg-white border-2 border-blue-200"}`}>

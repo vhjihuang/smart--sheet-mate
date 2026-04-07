@@ -96,7 +96,7 @@ export const MultiLevelTable = ({
             ))}
           </tr>
           {/* 实时预览行 */}
-          <tr className="bg-gray-50/30">
+          <tr className="bg-gray-50/30" data-preview-row>
             {leafColumns.map((col) => {
               const results = previewData[col.id] || [];
               const hasMappings = (mappings[col.id]?.length || 0) > 0;
