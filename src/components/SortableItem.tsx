@@ -103,9 +103,18 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
     }
   };
 
-  // 常用预设快捷逻辑
+  // 常用预设快捷逻辑（智能合并模式：同类型替换，不同类型追加）
   const handleApplyPreset = (presetSteps: TransformStep[]) => {
-    updateConfig({ steps: presetSteps });
+    const newSteps = [...steps];
+    for (const ps of presetSteps) {
+      const existingIdx = newSteps.findIndex(s => s.type === ps.type);
+      if (existingIdx >= 0) {
+        newSteps[existingIdx] = ps;
+      } else {
+        newSteps.push(ps);
+      }
+    }
+    updateConfig({ steps: newSteps });
   };
 
   return (
@@ -147,7 +156,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
             </Popover.Trigger>
             <Popover.Portal>
               <Popover.Content
-                className="bg-white p-5 shadow-[0_10px_40px_rgba(0,0,0,0.15)] rounded-3xl border border-gray-100 w-80 z-[100] animate-in fade-in zoom-in-95"
+                className="bg-white p-5 shadow-[0_10px_40px_rgba(0,0,0,0.15)] rounded-3xl border border-gray-100 w-80 z-[100] animate-in fade-in zoom-in-95 max-h-[70vh] overflow-y-auto"
                 sideOffset={10}
                 onPointerDown={(e) => e.stopPropagation()}
               >
@@ -175,8 +184,8 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                       <Type size={10} /> 补充组件 (Addon)
                     </label>
                     <div className="flex items-center gap-1">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="前缀"
                         className="w-16 h-8 text-[11px] px-2 border border-blue-100 rounded-lg bg-blue-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
                         value={prefix}
@@ -185,13 +194,32 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                       <div className="flex-1 h-8 flex items-center justify-center bg-gray-100 rounded-lg text-[10px] text-gray-400 font-bold border border-gray-200 px-2 truncate">
                         {node.sourceLabel}
                       </div>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="后缀"
                         className="w-16 h-8 text-[11px] px-2 border border-blue-100 rounded-lg bg-blue-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-mono"
                         value={suffix}
                         onChange={(e) => setSuffix(e.target.value)}
                       />
+                    </div>
+                    {/* Quick Toggles: Trim & Upper */}
+                    <div className="flex gap-1.5 pt-1">
+                      <button
+                        onClick={() => toggleStep('TRIM')}
+                        className={`flex-1 py-1 rounded-md text-[9px] font-bold transition-all border ${
+                          isTrim ? "bg-emerald-500 text-white border-emerald-400" : "bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100"
+                        }`}
+                      >
+                        {isTrim ? '✓ ' : ''}Trim
+                      </button>
+                      <button
+                        onClick={() => toggleStep('UPPER')}
+                        className={`flex-1 py-1 rounded-md text-[9px] font-bold transition-all border ${
+                          isUpper ? "bg-emerald-500 text-white border-emerald-400" : "bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100"
+                        }`}
+                      >
+                        {isUpper ? '✓ ' : ''}Upper
+                      </button>
                     </div>
                   </div>
 
@@ -250,26 +278,6 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                         </button>
                       ))}
                     </div>
-                  </div>
-
-                  {/* Component C: Clean (去重/格式) */}
-                  <div className="flex gap-1.5 pt-1">
-                    <button
-                      onClick={() => toggleStep('TRIM')}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-                        isTrim ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100"
-                      }`}
-                    >
-                      去空格 (Trim)
-                    </button>
-                    <button
-                      onClick={() => toggleStep('UPPER')}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-                        isUpper ? "bg-emerald-600 text-white border-emerald-500" : "bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100"
-                      }`}
-                    >
-                      转大写 (Upper)
-                    </button>
                   </div>
 
                   {/* Footer: Hardening & Remove */}
