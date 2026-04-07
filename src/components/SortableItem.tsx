@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Settings, X, Trash2, GripVertical, Wand2, ShieldCheck, Scissors, Type, ChevronRight, Eye, ChevronDown, Check } from "lucide-react";
+import { Settings, X, Trash2, GripVertical, Wand2, Scissors, Type, ChevronRight, Eye, ChevronDown, Check } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import type { MappingNode, TransformStep, TransformType } from "@/types";
 import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
