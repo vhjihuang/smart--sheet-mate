@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Settings, X, Trash2, GripVertical, Wand2, ShieldCheck, Scissors, Type, ChevronRight, Eye } from "lucide-react";
+import { Settings, X, Trash2, GripVertical, Wand2, ShieldCheck, Scissors, Type, ChevronRight, Eye, ChevronDown, Check } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import type { MappingNode, TransformStep, TransformType } from "@/types";
 import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
@@ -41,6 +41,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
 
   const steps = useMemo(() => node.steps || [], [node.steps]);
   const forceText = node.forceText || false;
+  const [showPresets, setShowPresets] = useState(false);
 
   // -------------------------
   // 辅助函数：提取平铺的配置
@@ -160,7 +161,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                 sideOffset={10}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
                   {/* Component A: Addon (补充组件) */}
                   <div className="space-y-2">
                     <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest flex items-center gap-1.5">
@@ -207,7 +208,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                   </div>
 
                   {/* Component B: Smart Crop (智能裁剪) */}
-                  <div className="space-y-2 pb-1 border-b border-gray-50">
+                  <div className="space-y-2">
                     <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest flex items-center gap-1.5">
                       <Scissors size={10} /> 智能裁剪 (Extract)
                     </label>
@@ -247,24 +248,33 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                     </div>
                   </div>
 
-                  {/* Presets Grid */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest px-1">常用业务方案</label>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {TEACHER_PRESETS.map((p) => (
-                        <button
-                          key={p.label}
-                          onClick={() => handleApplyPreset(p.steps)}
-                          className="px-2 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg text-[9px] font-bold transition-all truncate"
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
+                  {/* Presets: Collapsible */}
+                  <div className="space-y-1.5">
+                    <button
+                      onClick={() => setShowPresets(!showPresets)}
+                      className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded-lg text-[10px] font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+                    >
+                      <span>⚡ 快捷方案</span>
+                      <ChevronDown size={12} className={`transition-transform ${showPresets ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {showPresets && (
+                      <div className="grid grid-cols-2 gap-1.5 animate-in slide-in-from-top-2 duration-150">
+                        {TEACHER_PRESETS.map((p) => (
+                          <button
+                            key={p.label}
+                            onClick={() => handleApplyPreset(p.steps)}
+                            className="px-2 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg text-[9px] font-bold transition-all truncate"
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Footer: Hardening & Remove */}
-                  <div className="pt-2 mt-1 border-t border-gray-50 space-y-3">
+                  {/* Footer: Actions */}
+                  <div className="pt-1.5 space-y-2">
                     <button
                       onClick={() => {
                         const previewEl = document.querySelector('[data-preview-row]');
@@ -272,28 +282,31 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                         previewEl?.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2');
                         setTimeout(() => previewEl?.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2'), 1500);
                       }}
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-[11px] font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+                      className="w-full py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-[10px] font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
                     >
-                      <Eye size={12} /> 查看预览结果 ↓
+                      <Eye size={11} /> 查看预览结果 ↓
                     </button>
 
-                    <div className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-2xl border border-blue-100 transition-colors hover:bg-blue-50 cursor-pointer" 
-                         onClick={() => updateConfig({ forceText: !forceText })}>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${forceText ? "bg-emerald-500 text-white shadow-sm" : "bg-white border-2 border-blue-200"}`}>
-                        {forceText && <ShieldCheck size={12} />}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-black text-blue-700">物理硬化 (深度锁定格式)</span>
-                        <span className="text-[9px] text-blue-400">强制导出为文本，防止身份证/学前0丢失</span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <label
+                        className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors border border-transparent hover:border-gray-200"
+                        onClick={(e) => { e.stopPropagation(); updateConfig({ forceText: !forceText }); }}
+                      >
+                        <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border-2 transition-colors ${
+                          forceText ? "bg-emerald-500 border-emerald-500" : "border-gray-300"
+                        }`}>
+                          {forceText && <Check size={9} className="text-white" />}
+                        </div>
+                        <span className="text-[9px] text-gray-600">深度锁定格式</span>
+                      </label>
+
+                      <button
+                        onClick={() => onRemove(node.id)}
+                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors border border-transparent hover:border-red-100"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
-
-                    <button
-                      onClick={() => onRemove(node.id)}
-                      className="w-full text-red-400 hover:text-red-600 flex items-center justify-center gap-1.5 text-[10px] font-bold py-1 transition-colors"
-                    >
-                      <Trash2 size={12} /> 撤销该字段映射
-                    </button>
                   </div>
                 </div>
                 <Popover.Arrow className="fill-white" />
