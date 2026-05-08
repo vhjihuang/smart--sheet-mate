@@ -1,3 +1,9 @@
+import type {
+  SharedTransformRule,
+  SharedTransformStep,
+  SharedTransformType,
+} from "../../shared/transform";
+
 export interface TargetColumn {
   id: string;
   label: string;
@@ -11,29 +17,14 @@ export interface SourceColumn {
 }
 
 // 转换步骤定义
-export type TransformType = 
-  | 'TRIM'           // 去空格
-  | 'UPPER'          // 转大写
-  | 'LOWER'          // 转小写
-  | 'CROP'           // 裁剪/截取
-  | 'REPLACE'        // 替换
-  | 'PREFIX'         // 加前缀
-  | 'SUFFIX'         // 加后缀
-  | 'DATE_FORMAT'    // 日期格式化
-  | 'SCORE_GRADE'    // 成绩分级 (基础教育常用)
-  | 'ID_MASK'        // 证件脱敏 (保护学生隐私)
-  | 'CUSTOM';        // 自定义转换
-
-export interface TransformStep {
-  type: TransformType;
-  params: Record<string, any>;
-}
+export type TransformType = SharedTransformType;
+export type ScoreGradeRule = SharedTransformRule;
+export type TransformStep = SharedTransformStep;
 
 // 插槽聚合配置 (多对一映射)
 export interface SlotConfig {
   type: 'JOIN' | 'SUM' | 'CUSTOM';
-  separator?: string; // 只有 JOIN 类型需要
-  customCode?: string;
+  separator?: string;
 }
 
 export interface MappingNode {
@@ -42,7 +33,7 @@ export interface MappingNode {
   sourceLabel: string;
   steps: TransformStep[]; // 从单一 transform 升级为流水线 steps
   forceText?: boolean;    // 【物理硬化】开关：强制该列在写入 Excel 时设为文本格式 (@)
-  children: MappingNode[]; // 保留嵌套逻辑
+  children?: MappingNode[]; // 兼容旧数据结构，当前版本不再使用嵌套映射
 }
 
 // 对应用户提出的最终生成协议

@@ -1,4 +1,4 @@
-import type { TargetColumn, SlotConfig, TransformStep } from "@/types";
+import type { SlotConfig, TransformStep } from "@/types";
 
 export const MAX_NEST_LEVEL = 3;
 
@@ -55,34 +55,4 @@ export const CROP_SHORTCUTS = [
   { label: "生日 (7-14位)", start: 6, length: 8 },
   { label: "性别 (17位)", start: 16, length: 1 },
   { label: "区划 (1-6位)", start: 0, length: 6 },
-];
-
-export const defaultTargetColumns: TargetColumn[] = [
-  {
-    id: "target-student",
-    label: "学生概况 (预览)",
-    isGroup: true,
-    children: [
-      {
-        id: "target-identity",
-        label: "学籍信息",
-        isGroup: true,
-        children: [
-          { id: "target-name", label: "姓名" },
-          { id: "target-idcard", label: "身份证号" },
-          { id: "target-studid", label: "全国学号" },
-        ],
-      },
-      {
-        id: "target-scores",
-        label: "成绩报告",
-        isGroup: true,
-        children: [
-          { id: "target-math", label: "数学" },
-          { id: "target-chinese", label: "语文" },
-          { id: "target-total", label: "总分" },
-        ],
-      },
-    ],
-  },
 ];
