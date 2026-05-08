@@ -1,12 +1,19 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'shared/**/*.{test,spec}.{ts,tsx}'],
+    css: false,
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -18,17 +25,17 @@ export default defineConfig({
           groups: [
             {
               name: 'excel-libs',
-              test: /node_modules[\/](xlsx)/,
+              test: /node_modules[/](xlsx)/,
               priority: 30
             },
             {
               name: 'dnd-libs',
-              test: /node_modules[\/](@dnd-kit)/,
+              test: /node_modules[/](@dnd-kit)/,
               priority: 20
             },
             {
               name: 'radix-libs',
-              test: /node_modules[\/](@radix-ui)/,
+              test: /node_modules[/](@radix-ui)/,
               priority: 15
             },
             {
