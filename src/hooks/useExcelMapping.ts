@@ -18,6 +18,7 @@ export const useExcelMapping = () => {
     onSlotConfigsReset: () => setSlotConfigs({}),
     onPreviewReset: () => previewExport.setPreviewData({}),
     onErrorReset: () => setError(null),
+    hasMappings: () => Object.values(mappings).some((nodes) => nodes.length > 0),
   });
 
   const previewExport = usePreviewExport({
@@ -34,6 +35,7 @@ export const useExcelMapping = () => {
     templateHeaderRowEnd: workbookState.templateHeaderRowEnd,
     currentSheetIndex: workbookState.currentSheetIndex,
     templateRows: workbookState.templateRows,
+    dataRowStart: workbookState.dataRowStart,
     isHeaderConfirmed: workbookState.isHeaderConfirmed,
     setLoading: workbookState.setLoading,
   });
@@ -166,7 +168,7 @@ export const useExcelMapping = () => {
 
   const handleUpdate = useCallback((id: string, steps: TransformStep[], forceText?: boolean) => {
     setMappings((prev) => {
-      const nextMappings = { ...prev };
+      const nextMappings: Record<string, MappingNode[]> = {};
       for (const [targetId, nodes] of Object.entries(prev)) {
         const targetNode = nodes.find((n) => n.id === id);
         if (targetNode) {
@@ -181,6 +183,7 @@ export const useExcelMapping = () => {
           );
           break;
         }
+        nextMappings[targetId] = nodes;
       }
       return nextMappings;
     });
@@ -199,7 +202,10 @@ export const useExcelMapping = () => {
       return;
     }
 
-    const nextMappings = { ...mappings };
+    const nextMappings: Record<string, MappingNode[]> = {};
+    for (const [key, nodes] of Object.entries(mappings)) {
+      nextMappings[key] = [...nodes];
+    }
     let matchCount = 0;
     const leafColumns = getLeafColumns(workbookState.targetColumns);
     const usedSourceIds = new Set<string>();
@@ -219,11 +225,10 @@ export const useExcelMapping = () => {
       const match = workbookState.sourceColumns.find((source) => {
         if (usedSourceIds.has(source.id)) return false;
         const sourceName = source.label.trim().toLowerCase();
-        return (
-          sourceName === targetName ||
-          sourceName.includes(targetName) ||
-          targetName.includes(sourceName)
-        );
+        if (sourceName === targetName) return true;
+        const shorter = sourceName.length < targetName.length ? sourceName : targetName;
+        if (shorter.length < 2) return false;
+        return sourceName.includes(targetName) || targetName.includes(sourceName);
       });
 
       if (match) {
@@ -277,16 +282,12 @@ export const useExcelMapping = () => {
     setActiveType,
     loading: workbookState.loading,
     setLoading: workbookState.setLoading,
-    FilePath: workbookState.filePath,
+    filePath: workbookState.filePath,
     setFilePath: workbookState.setFilePath,
     sheets: workbookState.sheets,
     currentSheetIndex: workbookState.currentSheetIndex,
     last: workbookState.last,
     rows: workbookState.rows,
-    headerRowStart: workbookState.headerRowStart,
-    setHeaderRowStart: workbookState.setHeaderRowStart,
-    headerRowEnd: workbookState.headerRowEnd,
-    setHeaderRowEnd: workbookState.setHeaderRowEnd,
     templatePath: workbookState.templatePath,
     templateRows: workbookState.templateRows,
     templateHeaderRowStart: workbookState.templateHeaderRowStart,
@@ -310,6 +311,12 @@ export const useExcelMapping = () => {
     activeData,
     isSourceMapped,
     isSheetLoaded: workbookState.isSheetLoaded,
+    headerRowStart: workbookState.headerRowStart,
+    setHeaderRowStart: workbookState.setHeaderRowStart,
+    headerRowEnd: workbookState.headerRowEnd,
+    setHeaderRowEnd: workbookState.setHeaderRowEnd,
+    dataRowStart: workbookState.dataRowStart,
+    setDataRowStart: workbookState.setDataRowStart,
     isHeaderConfirmed: workbookState.isHeaderConfirmed,
     validationDialogOpen: previewExport.validationDialogOpen,
     setValidationDialogOpen: previewExport.setValidationDialogOpen,
