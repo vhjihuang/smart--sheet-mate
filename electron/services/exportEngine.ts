@@ -28,6 +28,7 @@ interface ExportPayload {
   SourcePath: string;
   TemplatePath: string;
   SourceHeaderRows: { Start: number; End: number };
+  DataRowStart: number;
   TemplateHeaderRows: { Start: number; End: number };
   CurrentSheetIndex: number;
   TransformRules: TransformRule[];
@@ -196,7 +197,7 @@ export async function exportToTemplate(
       raw: false, // 全部转字符串
     });
 
-    const sheetIndex = (payload.CurrentSheetIndex || 1) - 1;
+    const sheetIndex = payload.CurrentSheetIndex ?? 0;
     const sheetName = sourceWb.SheetNames[sheetIndex];
     if (!sheetName) {
       return { Status: 0, Message: `源文件工作表 ${payload.CurrentSheetIndex} 不存在` };
@@ -209,11 +210,14 @@ export async function exportToTemplate(
       defval: '',
     });
 
-    // 数据行 = 跳过表头
-    const dataStartRow = payload.SourceHeaderRows.End + 1;
+    // 数据行 = 使用用户指定的数据起始行
+    const dataStartRow = payload.DataRowStart;
     const dataRows = allRows.slice(dataStartRow);
 
     if (dataRows.length === 0) {
+      if (dataStartRow >= allRows.length) {
+        return { Status: 0, Message: `数据起始行(第${dataStartRow + 1}行)超出文件总行数(${allRows.length}行)，请检查设置` };
+      }
       return { Status: 0, Message: '源文件表头之后没有数据行' };
     }
 
@@ -260,8 +264,10 @@ export async function exportToTemplate(
 
     // 获取模板写入起始行的样式（用于复制到后续行）
     const styleTemplateRow = templateWs.getRow(writeStartRow);
+    const hasStyleRow = styleTemplateRow && styleTemplateRow.cellCount > 0;
 
     let writeRowIdx = writeStartRow;
+    let writtenCount = 0;
 
     for (let i = 0; i < dataRows.length; i++) {
       const sourceRow = dataRows[i];
@@ -272,6 +278,15 @@ export async function exportToTemplate(
 
       const outputRowIdx = writeRowIdx;
       writeRowIdx += 1;
+      writtenCount += 1;
+
+      // 复制行高
+      if (hasStyleRow) {
+        const targetRow = templateWs.getRow(outputRowIdx);
+        if (styleTemplateRow.height) {
+          targetRow.height = styleTemplateRow.height;
+        }
+      }
 
       for (const rule of validRules) {
         const colIdx = colIndexMap[rule.targetColId];
@@ -290,8 +305,10 @@ export async function exportToTemplate(
         const cell = templateWs.getCell(outputRowIdx, colIdx);
 
         // 深度复制样式
-        const templateCell = styleTemplateRow.getCell(colIdx);
-        copyCellStyle(templateCell, cell);
+        if (hasStyleRow) {
+          const templateCell = styleTemplateRow.getCell(colIdx);
+          copyCellStyle(templateCell, cell);
+        }
 
         if (rule.forceText) {
           // ── forceText: 强制文本格式，防止科学计数法 ──
@@ -316,7 +333,7 @@ export async function exportToTemplate(
 
     return {
       Status: 1,
-      Message: `导出成功，共处理 ${dataRows.length} 行数据`,
+      Message: `导出成功，共处理 ${writtenCount} 行数据`,
       FilePath: outputPath,
     };
   } catch (err: unknown) {
