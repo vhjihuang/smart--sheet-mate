@@ -26,6 +26,16 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": ["arm64"]
+        }
+      ],
+      "icon": "public/icon.icns",
+      "category": "public.app-category.productivity"
+    },
     "win": {
       "target": "nsis",
       "icon": "public/icon.ico"
