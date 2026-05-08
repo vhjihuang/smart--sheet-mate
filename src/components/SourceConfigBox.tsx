@@ -70,7 +70,7 @@ export const SourceConfigBox = ({
           size="sm" 
           className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm h-7 px-2.5 text-[11px]"
         >
-          <Upload size={12} className="mr-1" /> 选择Excel
+          <Upload size={12} className="mr-1" /> 选择文件
         </Button>
         
         {filePath && (

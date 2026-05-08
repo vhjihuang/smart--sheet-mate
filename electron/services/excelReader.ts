@@ -110,8 +110,12 @@ export async function selectSourceFile(win: BrowserWindow): Promise<{
 }> {
   try {
     const result = await dialog.showOpenDialog(win, {
-      title: '选择源 Excel 文件',
-      filters: [{ name: 'Excel 文件', extensions: ['xls', 'xlsx'] }],
+      title: '选择源数据文件',
+      filters: [
+        { name: 'Excel 文件', extensions: ['xls', 'xlsx'] },
+        { name: 'CSV 文件', extensions: ['csv'] },
+        { name: '所有文件', extensions: ['*'] },
+      ],
       properties: ['openFile'],
     });
 
@@ -216,7 +220,7 @@ export function loadSourceData(params: {
       return { LoadStatus: 0, Message: '不支持加密文件，请先去除密码保护' };
     }
     if (msg.includes('Unsupported')) {
-      return { LoadStatus: 0, Message: '文件格式不支持，请使用 .xls 或 .xlsx 文件' };
+      return { LoadStatus: 0, Message: '文件格式不支持，请使用 .xls、.xlsx 或 .csv 文件' };
     }
     return { LoadStatus: 0, Message: `读取失败: ${msg}` };
   }
@@ -234,7 +238,11 @@ export async function loadTemplateFile(win: BrowserWindow): Promise<TemplateLoad
   try {
     const result = await dialog.showOpenDialog(win, {
       title: '选择目标模板文件',
-      filters: [{ name: 'Excel 文件', extensions: ['xls', 'xlsx'] }],
+      filters: [
+        { name: 'Excel 文件', extensions: ['xls', 'xlsx'] },
+        { name: 'CSV 文件', extensions: ['csv'] },
+        { name: '所有文件', extensions: ['*'] },
+      ],
       properties: ['openFile'],
     });
 

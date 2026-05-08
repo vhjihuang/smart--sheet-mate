@@ -191,8 +191,13 @@ export function validateFilePath(filePath: string | null, fileType: 'source' | '
 
   // 检查文件扩展名
   const ext = filePath.toLowerCase().split('.').pop();
-  if (ext !== 'xls' && ext !== 'xlsx') {
-    errors.push(`不支持的文件格式: .${ext}，请使用 .xls 或 .xlsx 文件`);
+  const allowedExts = ['xls', 'xlsx', 'csv'];
+  if (!ext || !allowedExts.includes(ext)) {
+    errors.push(`不支持的文件格式: .${ext}，请使用 .xls、.xlsx 或 .csv 文件`);
+  }
+
+  if (ext === 'csv' && fileType === 'template') {
+    warnings.push('CSV 模板不含样式信息，导出文件将使用默认格式');
   }
 
   return {

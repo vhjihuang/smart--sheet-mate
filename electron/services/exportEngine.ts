@@ -172,7 +172,10 @@ export async function exportToTemplate(
   const saveResult = await dialog.showSaveDialog(win, {
     title: '选择导出保存位置',
     defaultPath: defaultName,
-    filters: [{ name: 'Excel 文件', extensions: ['xlsx'] }],
+    filters: [
+      { name: 'Excel 文件', extensions: ['xlsx'] },
+      { name: 'CSV 文件', extensions: ['csv'] },
+    ],
   });
 
   if (saveResult.canceled || !saveResult.filePath) {
@@ -231,13 +234,15 @@ export async function exportToTemplate(
     if (templateExt === '.xlsx') {
       await templateWb.xlsx.readFile(payload.TemplatePath);
     } else if (templateExt === '.xls') {
-      // ExcelJS 不直接支持 .xls 读取
-      // 策略：用 SheetJS 读 .xls → 转为内存中的 .xlsx buffer → ExcelJS 读取
       const xlsWb = XLSX.readFile(payload.TemplatePath);
       const xlsxBuffer = XLSX.write(xlsWb, { type: 'buffer', bookType: 'xlsx' });
       await templateWb.xlsx.load(xlsxBuffer);
+    } else if (templateExt === '.csv') {
+      const csvWb = XLSX.readFile(payload.TemplatePath, { raw: false });
+      const xlsxBuffer = XLSX.write(csvWb, { type: 'buffer', bookType: 'xlsx' });
+      await templateWb.xlsx.load(xlsxBuffer);
     } else {
-      return { Status: 0, Message: '模板文件格式不支持' };
+      return { Status: 0, Message: '模板文件格式不支持，请使用 .xls、.xlsx 或 .csv 文件' };
     }
 
     const templateWs = templateWb.worksheets[0];
@@ -327,9 +332,18 @@ export async function exportToTemplate(
     }
 
     // ══════════════════════════════════════
-    // Step 5: 保存输出
+    // Step 5: 保存输出（根据扩展名选择格式）
     // ══════════════════════════════════════
-    await templateWb.xlsx.writeFile(outputPath);
+    const outputExt = path.extname(outputPath).toLowerCase();
+    if (outputExt === '.csv') {
+      const outBuffer = await templateWb.xlsx.writeBuffer();
+      const outWb = XLSX.read(outBuffer, { type: 'array' });
+      const outWs = outWb.Sheets[outWb.SheetNames[0]];
+      const csvContent = XLSX.utils.sheet_to_csv(outWs, { FS: ',', blankrows: false });
+      fs.writeFileSync(outputPath, '\uFEFF' + csvContent, 'utf-8');
+    } else {
+      await templateWb.xlsx.writeFile(outputPath);
+    }
 
     return {
       Status: 1,
