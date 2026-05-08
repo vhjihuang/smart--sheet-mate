@@ -7,6 +7,29 @@ import type { MappingNode, TransformStep, TransformType } from "@/types";
 import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
 import { applyTransformPipeline } from "@/utils/transformPreview";
 
+// 不依赖组件状态，提取到外部避免每次渲染创建新函数
+const createDefaultStep = (type: TransformType): TransformStep => {
+  switch (type) {
+    case "TRIM":
+    case "UPPER":
+    case "LOWER":
+      return { type, params: {} };
+    case "CROP":
+      return { type, params: { start: 0 } };
+    case "REPLACE":
+      return { type, params: { from: "", to: "" } };
+    case "PREFIX":
+    case "SUFFIX":
+      return { type, params: { text: "" } };
+    case "DATE_FORMAT":
+      return { type, params: { toFormat: "YYYY-MM-DD" } };
+    case "SCORE_GRADE":
+      return { type, params: { rules: [] } };
+    case "ID_MASK":
+      return { type, params: { keepStart: 6, keepEnd: 4 } };
+  }
+};
+
 interface SortableItemProps {
   node: MappingNode;
   sampleValue?: string; // 来自源数据的第一行样本
@@ -44,50 +67,20 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
   const forceText = node.forceText || false;
   const [showPresets, setShowPresets] = useState(false);
 
-  const createDefaultStep = (type: TransformType): TransformStep => {
-    switch (type) {
-      case "TRIM":
-      case "UPPER":
-      case "LOWER":
-        return { type, params: {} };
-      case "CROP":
-        return { type, params: { start: 0 } };
-      case "REPLACE":
-        return { type, params: { from: "", to: "" } };
-      case "PREFIX":
-      case "SUFFIX":
-        return { type, params: { text: "" } };
-      case "DATE_FORMAT":
-        return { type, params: { toFormat: "YYYY-MM-DD" } };
-      case "SCORE_GRADE":
-        return { type, params: { rules: [] } };
-      case "ID_MASK":
-        return { type, params: { keepStart: 6, keepEnd: 4 } };
-    }
-  };
-
   // -------------------------
   // 辅助函数：提取平铺的配置
+  // steps 通常只有 0-5 个元素，直接计算比 useMemo 更快
   // -------------------------
-  const prefixStep = useMemo(
-    () => steps.find((step): step is Extract<TransformStep, { type: "PREFIX" }> => step.type === "PREFIX"),
-    [steps],
-  );
-  const suffixStep = useMemo(
-    () => steps.find((step): step is Extract<TransformStep, { type: "SUFFIX" }> => step.type === "SUFFIX"),
-    [steps],
-  );
-  const cropStep = useMemo(
-    () => steps.find((step): step is Extract<TransformStep, { type: "CROP" }> => step.type === "CROP"),
-    [steps],
-  );
+  const prefixStep = steps.find((step): step is Extract<TransformStep, { type: "PREFIX" }> => step.type === "PREFIX");
+  const suffixStep = steps.find((step): step is Extract<TransformStep, { type: "SUFFIX" }> => step.type === "SUFFIX");
+  const cropStep = steps.find((step): step is Extract<TransformStep, { type: "CROP" }> => step.type === "CROP");
   const prefix = prefixStep?.params.text || "";
   const suffix = suffixStep?.params.text || "";
   const cropStart = cropStep?.params.start ?? null;
   const cropLength = cropStep?.params.length ?? null;
-  const isTrim = useMemo(() => steps.some(s => s.type === 'TRIM'), [steps]);
-  const isUpper = useMemo(() => steps.some(s => s.type === 'UPPER'), [steps]);
-  const isLower = useMemo(() => steps.some(s => s.type === 'LOWER'), [steps]);
+  const isTrim = steps.some(s => s.type === 'TRIM');
+  const isUpper = steps.some(s => s.type === 'UPPER');
+  const isLower = steps.some(s => s.type === 'LOWER');
 
   // -------------------------
   // 本地预览引擎 (支持所有转换类型)

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Settings, MousePointer2 } from "lucide-react";
@@ -30,6 +30,13 @@ export const TargetSlot = ({
   const { setNodeRef, isOver } = useDroppable({ 
     id: `slot-${target.id}` 
   });
+
+  // 预计算 sourceId -> colIndex Map，避免每次渲染都 findIndex
+  const sourceIdToIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    sourceColumns.forEach((col, idx) => map.set(col.id, idx));
+    return map;
+  }, [sourceColumns]);
 
   const handleSeparatorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onUpdateSlotConfig?.(target.id, { ...slotConfig, separator: e.target.value });
@@ -64,35 +71,69 @@ export const TargetSlot = ({
                 sideOffset={5}
               >
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-gray-700 border-b pb-1.5 mb-2">聚合设置</h4>
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] text-gray-500">连接符号</label>
-                    <div className="flex gap-1.5">
-                      {['', ' ', ',', '-', '_'].map(s => (
-                        <button 
-                          key={s}
-                          onClick={() => onUpdateSlotConfig?.(target.id, { ...slotConfig, separator: s })}
-                          className={`flex-1 text-[10px] py-1 border rounded transition-all ${
-                            slotConfig.separator === s 
-                              ? "bg-blue-50 border-blue-200 text-blue-600 font-bold" 
-                              : "bg-gray-50 border-gray-100 text-gray-400 hover:border-gray-300"
-                          }`}
-                        >
-                          {s === '' ? '无' : s === ' ' ? '空' : s}
-                        </button>
-                      ))}
-                    </div>
-                    <input 
-                      type="text"
-                      placeholder="自定义..."
-                      value={slotConfig.separator}
-                      onChange={handleSeparatorChange}
-                      className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded focus:border-blue-300 outline-none"
-                    />
+                  <h4 className="text-xs font-bold text-gray-700 border-b pb-1.5 mb-2">多字段聚合设置</h4>
+                  
+                  {/* 模式选择 */}
+                  <div className="flex gap-2 bg-gray-100 p-1 rounded-md">
+                    <button
+                      onClick={() => onUpdateSlotConfig?.(target.id, { ...slotConfig, type: 'JOIN' })}
+                      className={`flex-1 text-[11px] py-1 rounded transition-all ${
+                        slotConfig.type === 'JOIN' || !slotConfig.type
+                          ? "bg-white shadow-sm text-blue-600 font-bold"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      拼接
+                    </button>
+                    <button
+                      onClick={() => onUpdateSlotConfig?.(target.id, { ...slotConfig, type: 'SUM' })}
+                      className={`flex-1 text-[11px] py-1 rounded transition-all ${
+                        slotConfig.type === 'SUM'
+                          ? "bg-white shadow-sm text-blue-600 font-bold"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      求和
+                    </button>
                   </div>
-                  <p className="text-[10px] text-gray-400 leading-tight">
-                    当多个字段映射到此列时，将使用该符号连接它们。
-                  </p>
+
+                  {/* 模式配置区域 */}
+                  {(slotConfig.type === 'JOIN' || !slotConfig.type) ? (
+                    <div className="space-y-1.5 animate-in fade-in">
+                      <label className="text-[11px] text-gray-500">连接符号</label>
+                      <div className="flex gap-1.5">
+                        {['', ' ', ',', '-', '_'].map(s => (
+                          <button 
+                            key={s}
+                            onClick={() => onUpdateSlotConfig?.(target.id, { ...slotConfig, separator: s })}
+                            className={`flex-1 text-[10px] py-1 border rounded transition-all ${
+                              slotConfig.separator === s 
+                                ? "bg-blue-50 border-blue-200 text-blue-600 font-bold" 
+                                : "bg-gray-50 border-gray-100 text-gray-400 hover:border-gray-300"
+                            }`}
+                          >
+                            {s === '' ? '无' : s === ' ' ? '空' : s}
+                          </button>
+                        ))}
+                      </div>
+                      <input 
+                        type="text"
+                        placeholder="自定义..."
+                        value={slotConfig.separator || ''}
+                        onChange={handleSeparatorChange}
+                        className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded focus:border-blue-300 outline-none"
+                      />
+                      <p className="text-[10px] text-gray-400 leading-tight mt-1">
+                        当多个字段映射到此列时，将使用该符号连接它们。
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="animate-in fade-in p-2 bg-blue-50/50 rounded border border-blue-100">
+                      <p className="text-[10px] text-blue-600 leading-tight">
+                        将所有映射字段的值作为数字进行累加。非数字内容将被视为 0。
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <Popover.Arrow className="fill-white" />
               </Popover.Content>
@@ -113,8 +154,8 @@ export const TargetSlot = ({
             strategy={verticalListSortingStrategy}
           >
             {mappings.map((node) => {
-              // 寻找该 sourceId 对应的样本值
-              const colIndex = sourceColumns.findIndex(c => c.id === node.sourceId);
+              // 使用预计算的 Map 查找，O(1) 复杂度
+              const colIndex = sourceIdToIndex.get(node.sourceId) ?? -1;
               const sampleValue = colIndex !== -1 ? firstRow[colIndex] : undefined;
 
               return (
@@ -124,7 +165,7 @@ export const TargetSlot = ({
                   sampleValue={sampleValue}
                   onRemove={onRemove} 
                   onUpdate={onUpdate} 
-                  canNest={true} 
+                  canNest={false} 
                 />
               );
             })}

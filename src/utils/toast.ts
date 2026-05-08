@@ -21,7 +21,8 @@ const activeToasts = new Set<string>();
 export const showToast = (
   type: "success" | "error" | "info",
   message: string,
-  id?: string
+  id?: string,
+  action?: { label: string; onClick: () => void }
 ) => {
   const toastId = id || `toast-${type}-${message}`;
 
@@ -34,6 +35,7 @@ export const showToast = (
 
   const toastInstance = toast[type](message, {
     id: toastId,
+    action: action,
     onDismiss: () => {
       activeToasts.delete(toastId);
     },

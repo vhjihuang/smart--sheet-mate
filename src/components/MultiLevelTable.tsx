@@ -16,7 +16,7 @@ interface MultiLevelTableProps {
   onUpdateSlotConfig?: (columnId: string, config: SlotConfig) => void;
 }
 
-export const MultiLevelTable = ({ 
+export const MultiLevelTable = React.memo(({ 
   columns, 
   mappings, 
   previewData = {},
@@ -137,4 +137,4 @@ export const MultiLevelTable = ({
       </table>
     </div>
   );
-};
+});

@@ -5,12 +5,16 @@ import { safeCall } from "./goBridge.js";
  */
 export const safeCallParse = async <T>(method: string, params?: object): Promise<T> => {
   try {
-    console.log(`[safeCall] ${method}`, params);
+    if (import.meta.env.DEV) {
+      console.log(`[safeCall] ${method}`, params);
+    }
     const response = params 
       ? await safeCall("main", method, JSON.stringify(params))
       : await safeCall("main", method);
     
-    console.log(`[safeCall] ${method} response:`, response);
+    if (import.meta.env.DEV) {
+      console.log(`[safeCall] ${method} response:`, response);
+    }
     
     if (!response || response === "null") {
       throw new Error(`[${method}] 返回数据为空`);
