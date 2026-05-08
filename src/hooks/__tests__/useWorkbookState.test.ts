@@ -22,6 +22,7 @@ const createCallbacks = () => ({
   onSlotConfigsReset: vi.fn(),
   onPreviewReset: vi.fn(),
   onErrorReset: vi.fn(),
+  hasMappings: vi.fn(() => false),
 });
 
 describe('useWorkbookState', () => {
@@ -67,7 +68,9 @@ describe('useWorkbookState', () => {
         { DataList: ['张三', '20', '90'], Index: 1 },
       ];
 
-      mockSafeCallParse.mockResolvedValueOnce({ LoadStatus: 1, Message: '加载成功', Data: { Rows: testRows, Last: 2 } });
+      mockSafeCallParse
+        .mockResolvedValueOnce({ LoadStatus: 1, Message: '加载成功', Data: { Sheets: [{ SheetName: 'Sheet1' }], Rows: testRows, Last: 2 } })
+        .mockResolvedValueOnce({ LoadStatus: 1, Message: '加载成功', Data: { Rows: testRows, Last: 2 } });
       await act(async () => {
         result.current.setFilePath('/test/file.xlsx');
       });
@@ -114,6 +117,10 @@ describe('useWorkbookState', () => {
       const callbacks = createCallbacks();
       const { result } = renderHook(() => useWorkbookState(callbacks));
 
+      await act(async () => {
+        result.current.setFilePath('/test/file.xlsx');
+      });
+
       mockSafeCallParse.mockResolvedValueOnce({ Status: 1 });
 
       await act(async () => {
@@ -124,9 +131,25 @@ describe('useWorkbookState', () => {
       expect(mockShowToast).toHaveBeenCalledWith('success', '表头已确认');
     });
 
+    it('filePath 为空时应提示错误', async () => {
+      const callbacks = createCallbacks();
+      const { result } = renderHook(() => useWorkbookState(callbacks));
+
+      await act(async () => {
+        await result.current.confirmHeader();
+      });
+
+      expect(result.current.isHeaderConfirmed).toBe(false);
+      expect(mockShowToast).toHaveBeenCalledWith('error', '请先选择源文件');
+    });
+
     it('失败时应显示错误提示且 isHeaderConfirmed 保持 false', async () => {
       const callbacks = createCallbacks();
       const { result } = renderHook(() => useWorkbookState(callbacks));
+
+      await act(async () => {
+        result.current.setFilePath('/test/file.xlsx');
+      });
 
       mockSafeCallParse.mockResolvedValueOnce({ Status: 0, Message: '设置失败' });
 
@@ -142,6 +165,10 @@ describe('useWorkbookState', () => {
       const callbacks = createCallbacks();
       const { result } = renderHook(() => useWorkbookState(callbacks));
 
+      await act(async () => {
+        result.current.setFilePath('/test/file.xlsx');
+      });
+
       mockSafeCallParse.mockRejectedValueOnce(new Error('IPC 通信失败'));
 
       await act(async () => {
@@ -150,6 +177,50 @@ describe('useWorkbookState', () => {
 
       expect(result.current.isHeaderConfirmed).toBe(false);
       expect(mockShowToast).toHaveBeenCalledWith('error', 'IPC 通信失败');
+    });
+
+    it('dataRowStart 小于 headerRowEnd+1 时应自动修正', async () => {
+      const callbacks = createCallbacks();
+      const { result } = renderHook(() => useWorkbookState(callbacks));
+
+      await act(async () => {
+        result.current.setFilePath('/test/file.xlsx');
+      });
+
+      mockSafeCallParse.mockResolvedValueOnce({ Status: 1 });
+
+      await act(async () => {
+        result.current.setHeaderRowEnd(2);
+        result.current.setDataRowStart(1);
+      });
+
+      await act(async () => {
+        await result.current.confirmHeader();
+      });
+
+      expect(result.current.dataRowStart).toBe(3);
+    });
+
+    it('dataRowStart 已合理时确认表头不应覆盖', async () => {
+      const callbacks = createCallbacks();
+      const { result } = renderHook(() => useWorkbookState(callbacks));
+
+      await act(async () => {
+        result.current.setFilePath('/test/file.xlsx');
+      });
+
+      mockSafeCallParse.mockResolvedValueOnce({ Status: 1 });
+
+      await act(async () => {
+        result.current.setHeaderRowEnd(2);
+        result.current.setDataRowStart(5);
+      });
+
+      await act(async () => {
+        await result.current.confirmHeader();
+      });
+
+      expect(result.current.dataRowStart).toBe(5);
     });
   });
 });

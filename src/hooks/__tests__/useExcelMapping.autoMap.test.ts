@@ -17,7 +17,7 @@ import { showToast } from '@/utils/toast';
 import { getLeafColumns } from '@/utils/excel';
 import { generateId } from '@/utils/excel';
 
-const mockShowToast = vi.mocked(showToast);
+vi.mocked(showToast);
 
 function runAutoMapLogic(
   sourceColumns: SourceColumn[],
@@ -44,11 +44,10 @@ function runAutoMapLogic(
     const match = sourceColumns.find((source) => {
       if (usedSourceIds.has(source.id)) return false;
       const sourceName = source.label.trim().toLowerCase();
-      return (
-        sourceName === targetName ||
-        sourceName.includes(targetName) ||
-        targetName.includes(sourceName)
-      );
+      if (sourceName === targetName) return true;
+      const shorter = sourceName.length < targetName.length ? sourceName : targetName;
+      if (shorter.length < 2) return false;
+      return sourceName.includes(targetName) || targetName.includes(sourceName);
     });
 
     if (match) {
@@ -158,6 +157,30 @@ describe('autoMap 逻辑', () => {
 
     expect(matchCount).toBe(1);
     expect(nextMappings['col-0'][0].sourceId).toBe('src-0');
+  });
+
+  it('过短的字段名不应通过 includes 匹配', () => {
+    const sourceColumns: SourceColumn[] = [
+      { id: 'src-0', label: '姓名' },
+    ];
+    const targetColumns: TargetColumn[] = [
+      { id: 'col-0', label: '名' },
+    ];
+
+    const { matchCount } = runAutoMapLogic(sourceColumns, targetColumns, {});
+    expect(matchCount).toBe(0);
+  });
+
+  it('2个字符以上的 includes 匹配应正常工作', () => {
+    const sourceColumns: SourceColumn[] = [
+      { id: 'src-0', label: '学生姓名' },
+    ];
+    const targetColumns: TargetColumn[] = [
+      { id: 'col-0', label: '姓名' },
+    ];
+
+    const { matchCount } = runAutoMapLogic(sourceColumns, targetColumns, {});
+    expect(matchCount).toBe(1);
   });
 
   it('已有映射的目标列应被跳过', () => {
