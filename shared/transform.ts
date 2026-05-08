@@ -164,7 +164,7 @@ export function applyStep(value: string | number | null | undefined, step: Share
       default:
         return strValue;
     }
-  } catch (error) {
+  } catch {
     return originalValue;
   }
 }
@@ -173,6 +173,14 @@ function applyDateFormat(value: string, toFormat: string): string {
   let date: Date | null = null;
   if (/^\d+$/.test(value) && value.length <= 5) {
     date = new Date((parseInt(value, 10) - 25569) * 86400 * 1000);
+  }
+  if ((!date || Number.isNaN(date.getTime())) && /^\d{8}$/.test(value)) {
+    const year = parseInt(value.slice(0, 4), 10);
+    const month = parseInt(value.slice(4, 6), 10);
+    const day = parseInt(value.slice(6, 8), 10);
+    if (year >= 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      date = new Date(year, month - 1, day);
+    }
   }
   if (!date || Number.isNaN(date.getTime())) {
     const cnMatch = value.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?$/);

@@ -47,4 +47,22 @@ describe('DATE_FORMAT 转换', () => {
     const result = applyStep('44927', step);
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  it('应正确处理 YYYYMMDD 格式', () => {
+    const step: SharedTransformStep = {
+      type: 'DATE_FORMAT',
+      params: { toFormat: 'YYYY-MM-DD' },
+    };
+    const result = applyStep('20240305', step);
+    expect(result).toBe('2024-03-05');
+  });
+
+  it('无效的 YYYYMMDD 应返回原值', () => {
+    const step: SharedTransformStep = {
+      type: 'DATE_FORMAT',
+      params: { toFormat: 'YYYY-MM-DD' },
+    };
+    const result = applyStep('20241345', step);
+    expect(result).toBe('20241345');
+  });
 });
