@@ -10,11 +10,15 @@ import {
 import { ExcelPreview } from "./ExcelPreview";
 import type { ExcelRow } from "@/types";
 
+interface SheetOption {
+  SheetName: string;
+}
+
 interface SourceConfigBoxProps {
   isSheetLoaded: boolean;
   loading: boolean;
   FilePath: string | null;
-  sheets: any[];
+  sheets: SheetOption[];
   currentSheetIndex: number;
   rows: ExcelRow[];
   headerRowStart: number;
@@ -84,7 +88,7 @@ export const SourceConfigBox = ({
           
           {sheets.length > 1 && (
             <Select 
-              value={(currentSheetIndex - 1).toString()} 
+              value={currentSheetIndex.toString()} 
               onValueChange={(v) => onSheetChange(Number(v))}
             >
               <SelectTrigger className="w-[85px] h-7 text-[10px]">

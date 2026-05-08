@@ -9,15 +9,16 @@ interface DraggableItemProps {
 }
 
 export const DraggableItem = ({ id, name, isDisabled }: DraggableItemProps) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ 
-    id: isDisabled ? "" : id 
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+    disabled: isDisabled,
   });
-  
+
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
+      {...(isDisabled ? {} : listeners)}
+      {...(isDisabled ? {} : attributes)}
       className={`${columnClass} ${isDragging ? "opacity-50" : isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
     >
       {name}

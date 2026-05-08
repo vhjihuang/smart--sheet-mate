@@ -1,5 +1,6 @@
 import { FileSpreadsheet } from "lucide-react";
 import type { ExcelRow } from "@/types";
+import { getColumnLabel } from "@/utils/excel";
 
 interface ExcelPreviewProps {
   rows: ExcelRow[];
@@ -35,13 +36,13 @@ export const ExcelPreview = ({ rows, title }: ExcelPreviewProps) => {
                   key={i} 
                   className="p-1.5 border-b border-gray-100 font-bold text-gray-400 bg-gray-50/30 min-w-[100px] uppercase tracking-tighter"
                 >
-                  列 {String.fromCharCode(65 + i)}
+                  列 {getColumnLabel(i)}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {rows.map((row, i) => (
+            {rows.slice(0, 50).map((row, i) => (
               <tr key={i} className="hover:bg-blue-50/20 transition-colors group">
                 <td className="p-1.5 border-r border-gray-50 bg-gray-50/20 text-gray-400 text-center font-mono font-bold group-hover:text-blue-500 transition-colors">
                   {i + 1}
@@ -57,6 +58,13 @@ export const ExcelPreview = ({ rows, title }: ExcelPreviewProps) => {
                 ))}
               </tr>
             ))}
+            {rows.length > 50 && (
+              <tr>
+                <td colSpan={(rows[0]?.DataList?.length || 0) + 1} className="p-2 text-center text-gray-400 italic bg-gray-50/10">
+                  仅展示前 50 行数据以保证性能...
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

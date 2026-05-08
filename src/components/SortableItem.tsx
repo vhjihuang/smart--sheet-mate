@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Settings, X, Trash2, GripVertical, Wand2, Scissors, Type, ChevronRight, Eye, ChevronDown, Check } from "lucide-react";
+import { Settings, Trash2, GripVertical, Wand2, Scissors, Type, Eye, ChevronDown, Check } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import type { MappingNode, TransformStep, TransformType } from "@/types";
 import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
+import { applyTransformPipeline } from "@/utils/transformPreview";
 
 interface SortableItemProps {
   node: MappingNode;
@@ -43,31 +44,58 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
   const forceText = node.forceText || false;
   const [showPresets, setShowPresets] = useState(false);
 
+  const createDefaultStep = (type: TransformType): TransformStep => {
+    switch (type) {
+      case "TRIM":
+      case "UPPER":
+      case "LOWER":
+        return { type, params: {} };
+      case "CROP":
+        return { type, params: { start: 0 } };
+      case "REPLACE":
+        return { type, params: { from: "", to: "" } };
+      case "PREFIX":
+      case "SUFFIX":
+        return { type, params: { text: "" } };
+      case "DATE_FORMAT":
+        return { type, params: { toFormat: "YYYY-MM-DD" } };
+      case "SCORE_GRADE":
+        return { type, params: { rules: [] } };
+      case "ID_MASK":
+        return { type, params: { keepStart: 6, keepEnd: 4 } };
+    }
+  };
+
   // -------------------------
   // 辅助函数：提取平铺的配置
   // -------------------------
-  const prefix = useMemo(() => steps.find(s => s.type === 'PREFIX')?.params.text || "", [steps]);
-  const suffix = useMemo(() => steps.find(s => s.type === 'SUFFIX')?.params.text || "", [steps]);
-  const cropStart = useMemo(() => steps.find(s => s.type === 'CROP')?.params.start ?? null, [steps]);
-  const cropLength = useMemo(() => steps.find(s => s.type === 'CROP')?.params.length ?? null, [steps]);
+  const prefixStep = useMemo(
+    () => steps.find((step): step is Extract<TransformStep, { type: "PREFIX" }> => step.type === "PREFIX"),
+    [steps],
+  );
+  const suffixStep = useMemo(
+    () => steps.find((step): step is Extract<TransformStep, { type: "SUFFIX" }> => step.type === "SUFFIX"),
+    [steps],
+  );
+  const cropStep = useMemo(
+    () => steps.find((step): step is Extract<TransformStep, { type: "CROP" }> => step.type === "CROP"),
+    [steps],
+  );
+  const prefix = prefixStep?.params.text || "";
+  const suffix = suffixStep?.params.text || "";
+  const cropStart = cropStep?.params.start ?? null;
+  const cropLength = cropStep?.params.length ?? null;
   const isTrim = useMemo(() => steps.some(s => s.type === 'TRIM'), [steps]);
   const isUpper = useMemo(() => steps.some(s => s.type === 'UPPER'), [steps]);
+  const isLower = useMemo(() => steps.some(s => s.type === 'LOWER'), [steps]);
 
   // -------------------------
-  // 本地预览引擎 (简易 JS 实现)
+  // 本地预览引擎 (支持所有转换类型)
   // -------------------------
   const transformedPreview = useMemo(() => {
-    let val = sampleValue;
-    if (isTrim) val = val.trim();
-    
-    // 裁剪逻辑
-    if (cropStart !== null && cropLength !== null) {
-      val = val.substring(cropStart, Math.min(val.length, cropStart + cropLength));
-    }
-    
-    if (isUpper) val = val.toUpperCase();
-    return `${prefix}${val}${suffix}`;
-  }, [sampleValue, steps, prefix, suffix, cropStart, cropLength, isTrim, isUpper]);
+    const val = sampleValue || "样例数据";
+    return applyTransformPipeline(val, steps);
+  }, [sampleValue, steps]);
 
   // -------------------------
   // 统一更新逻辑
@@ -100,7 +128,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
     if (exists) {
       updateConfig({ steps: steps.filter(s => s.type !== type) });
     } else {
-      updateConfig({ steps: [...steps, { type, params: {} }] });
+      updateConfig({ steps: [...steps, createDefaultStep(type)] });
     }
   };
 
@@ -162,6 +190,26 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col gap-3">
+                  {/* 实时预览区域 */}
+                  {steps.length > 0 && (
+                    <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Eye size={10} className="text-blue-600" />
+                        <span className="text-[9px] text-blue-600 font-black uppercase tracking-wider">实时预览</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-lg border border-blue-100">
+                        <div className="text-[10px] text-gray-400 mb-1">原始值</div>
+                        <div className="text-xs font-mono text-gray-600 mb-2 truncate" title={sampleValue}>
+                          {sampleValue || "样例数据"}
+                        </div>
+                        <div className="text-[10px] text-gray-400 mb-1">转换后</div>
+                        <div className="text-xs font-mono text-blue-700 font-bold truncate" title={transformedPreview}>
+                          {transformedPreview}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Component A: Addon (补充组件) */}
                   <div className="space-y-2">
                     <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest flex items-center gap-1.5">
@@ -203,6 +251,14 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                         }`}
                       >
                         {isUpper ? '✓ ' : ''}Upper
+                      </button>
+                      <button
+                        onClick={() => toggleStep('LOWER')}
+                        className={`flex-1 py-1 rounded-md text-[9px] font-bold transition-all border ${
+                          isLower ? "bg-emerald-500 text-white border-emerald-400" : "bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100"
+                        }`}
+                      >
+                        {isLower ? '✓ ' : ''}Lower
                       </button>
                     </div>
                   </div>
