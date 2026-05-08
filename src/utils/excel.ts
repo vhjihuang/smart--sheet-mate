@@ -1,5 +1,4 @@
 import type { TargetColumn, SourceColumn, ExcelRow } from "@/types";
-import type { MappingNode } from "@/types";
 
 // 获取所有叶子列（可放置的列）
 export const getLeafColumns = (columns: TargetColumn[]): TargetColumn[] => {
@@ -37,6 +36,16 @@ export const getColumnSpan = (column: TargetColumn): number => {
 
 export const generateId = () => `mapping-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+export const getColumnLabel = (index: number): string => {
+  let label = '';
+  let n = index;
+  while (n >= 0) {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  }
+  return label;
+};
+
 // 按范围解析表头为扁平 SourceColumn 列表
 export const parseSourceColumns = (
   rowsData: ExcelRow[],
@@ -46,6 +55,7 @@ export const parseSourceColumns = (
   if (!rowsData || rowsData.length === 0) return [];
   
   const headerRows = rowsData.slice(start, end + 1);
+  if (headerRows.length === 0) return [];
   const colCount = Math.max(...headerRows.map(r => r.DataList.length));
   
   const result: SourceColumn[] = [];
@@ -63,17 +73,6 @@ export const parseSourceColumns = (
     });
   }
   return result;
-};
-
-export const getNodeDepth = (nodes: MappingNode[], targetId: string, currentDepth = 0): number => {
-  for (const node of nodes) {
-    if (node.id === targetId) return currentDepth;
-    if (node.children.length > 0) {
-      const depth = getNodeDepth(node.children, targetId, currentDepth + 1);
-      if (depth >= 0) return depth;
-    }
-  }
-  return -1;
 };
 
 // 根据表头行解析目标列（用于模板）
