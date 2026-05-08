@@ -1,6 +1,5 @@
 interface ElectronAPI {
   [key: string]: ((...args: unknown[]) => Promise<unknown>) | undefined;
-  Shell_OpenPath?: (path: string) => Promise<unknown>;
 }
 
 declare global {
@@ -18,8 +17,7 @@ export async function safeCall(_moduleName: string, funcName: string, ...args: u
   const api = window.electronAPI;
 
   if (!api) {
-    console.error('electronAPI 未就绪，可能在纯浏览器环境中运行');
-    return null;
+    throw new Error('electronAPI 未就绪，可能在纯浏览器环境中运行');
   }
 
   // Electron IPC 直接传对象，不需要 JSON 序列化
@@ -37,8 +35,7 @@ export async function safeCall(_moduleName: string, funcName: string, ...args: u
 
   const target = api[funcName];
   if (typeof target !== 'function') {
-    console.error(`API 方法 ${funcName} 不存在`);
-    return null;
+    throw new Error(`API 方法 ${funcName} 不存在，请确认后端接口已注册`);
   }
 
   const result = await target(...parsedArgs);
