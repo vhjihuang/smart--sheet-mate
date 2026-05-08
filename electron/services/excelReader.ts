@@ -82,9 +82,15 @@ function sheetToExcelRows(ws: XLSX.WorkSheet): ExcelRow[] {
     header: 1,    // 返回数组
     raw: false,   // 全部转字符串（防止科学计数法）
     defval: '',   // 空值用空字符串
+    range: 0,     // 从第 0 行开始
   });
 
-  return rawRows.map((dataList, index) => ({
+  // 限制返回行数，防止大文件导致 IPC 通道阻塞或内存溢出
+  // 预览只需要前面的数据，正式导出由 exportEngine 处理
+  const limit = 1000;
+  const slicedRows = rawRows.slice(0, limit);
+
+  return slicedRows.map((dataList, index) => ({
     DataList: dataList.map(cell => (cell == null ? '' : String(cell))),
     Index: index,
   }));
