@@ -1,15 +1,15 @@
 import { useState, useMemo, useRef } from "react";
-import { 
-  Download, 
-  Layers, 
-  ShieldCheck, 
-  ChevronUp, 
+import {
+  Download,
+  Layers,
+  ShieldCheck,
+  ChevronUp,
   ChevronDown,
   LayoutGrid,
   Columns,
   Search
 } from "lucide-react";
-import { DndContext, DragOverlay, closestCenter, type CollisionDetection } from "@dnd-kit/core";
+import { DndContext, DragOverlay, closestCenter, type CollisionDetection, type DragStartEvent } from "@dnd-kit/core";
 import { Toaster } from "sonner";
 import { useExcelMapping } from "@/hooks/useExcelMapping";
 import { MultiLevelTable } from "@/components/MultiLevelTable";
@@ -18,12 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SourceConfigBox } from "@/components/SourceConfigBox";
 import { TemplateConfigBox } from "@/components/TemplateConfigBox";
-import { 
-  Collapsible, 
-  CollapsibleTrigger, 
-  CollapsibleContent 
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent
 } from "@/components/ui/collapsible";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -46,12 +46,13 @@ function App() {
     error,
     activeId,
     loading,
-    FilePath,
+    filePath,
     sheets,
     currentSheetIndex,
     rows,
     headerRowStart, setHeaderRowStart,
     headerRowEnd, setHeaderRowEnd,
+    dataRowStart, setDataRowStart,
     templatePath,
     templateRows,
     templateHeaderRowStart, setTemplateHeaderRowStart,
@@ -85,14 +86,16 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredSourceColumns = useMemo(() => {
-    return sourceColumns.filter(col => 
+    return sourceColumns.filter((col: SourceColumn) =>
       col.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [sourceColumns, searchTerm]);
 
+
+
   const mappingContainerRect = useRef<DOMRect | null>(null);
 
-  const onDragStartWrapper = (event: any) => {
+  const onDragStartWrapper = (event: DragStartEvent) => {
     const mappingContainer = document.querySelector('[data-mapping-container="true"]');
     if (mappingContainer) {
       mappingContainerRect.current = mappingContainer.getBoundingClientRect();
@@ -106,9 +109,9 @@ function App() {
     if (rect) {
       const { pointerCoordinates } = args;
       if (pointerCoordinates && (
-        pointerCoordinates.x < rect.left || 
-        pointerCoordinates.x > rect.right || 
-        pointerCoordinates.y < rect.top || 
+        pointerCoordinates.x < rect.left ||
+        pointerCoordinates.x > rect.right ||
+        pointerCoordinates.y < rect.top ||
         pointerCoordinates.y > rect.bottom
       )) {
         return [];
@@ -120,7 +123,7 @@ function App() {
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50 font-sans antialiased overflow-hidden select-none">
       <Toaster position="top-right" richColors />
-      
+
       {error && (
         <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs shadow-sm flex items-center gap-2">
           <ShieldCheck size={14} />
@@ -140,7 +143,7 @@ function App() {
         <div className="flex-1 flex flex-col pt-12 px-6 pb-12 gap-6 min-h-0 overflow-hidden">
           <section className="flex-shrink-0">
             <Collapsible open={!isConfigCollapsed} onOpenChange={(open) => setIsConfigCollapsed(!open)}>
-              <div 
+              <div
                 className={`
                   bg-white/80 backdrop-blur-3xl border border-white/40 shadow-2xl relative overflow-hidden ring-1 ring-black/5 transition-all duration-300 ease-in-out
                   ${isConfigCollapsed ? "rounded-2xl border-blue-100 shadow-blue-500/5 cursor-pointer hover:border-blue-300" : "rounded-3xl shadow-indigo-500/5"}
@@ -163,11 +166,11 @@ function App() {
                       </div>
                     </div>
                   </CollapsibleTrigger>
-                  
+
                   <CollapsibleTrigger asChild>
-                    <Button 
+                    <Button
                       variant={isConfigCollapsed ? "ghost" : "outline"}
-                      size="sm" 
+                      size="sm"
                       className={`
                         shadow-blue-500/5 gap-2 h-9 px-4 justify-start rounded-xl font-black transition-all duration-300 text-[11px]
                         ${isConfigCollapsed ? "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white" : "bg-white/80 backdrop-blur-md border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-xl"}
@@ -178,7 +181,7 @@ function App() {
                           {isConfigCollapsed ? (
                             <ChevronDown size={14} className="stroke-[3px]" />
                           ) : (
-                            <ChevronUp size={14} className="stroke-[3px]" /> 
+                            <ChevronUp size={14} className="stroke-[3px]" />
                           )}
                         </div>
                         <span className="truncate">
@@ -194,7 +197,7 @@ function App() {
                     <SourceConfigBox
                       isSheetLoaded={isSheetLoaded}
                       loading={loading}
-                      FilePath={FilePath}
+                      filePath={filePath}
                       sheets={sheets}
                       currentSheetIndex={currentSheetIndex}
                       rows={rows}
@@ -206,8 +209,16 @@ function App() {
                       onSheetChange={handleSheetChange}
                       onSetHeaderRowStart={setHeaderRowStart}
                       onSetHeaderRowEnd={setHeaderRowEnd}
-                      onConfirmHeader={confirmHeader}
-                      onSkipHeader={skipHeader}
+                      dataRowStart={dataRowStart}
+                      onSetDataRowStart={setDataRowStart}
+                      onConfirmHeader={async () => {
+                        await confirmHeader();
+                        setSearchTerm("");
+                      }}
+                      onSkipHeader={() => {
+                        skipHeader();
+                        setSearchTerm("");
+                      }}
                     />
 
                     <TemplateConfigBox
@@ -242,8 +253,8 @@ function App() {
               <div className="px-4 pb-2">
                 <div className="relative group">
                   <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                  <Input 
-                    placeholder="搜索字段..." 
+                  <Input
+                    placeholder="搜索字段..."
                     className="pl-8 h-8 text-[11px] bg-gray-50/50 border-none rounded-lg focus-visible:ring-1 focus-visible:ring-blue-100 placeholder:text-gray-300"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -276,7 +287,7 @@ function App() {
                   </div>
                   <div>
                     <h2 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-2">
-                      字段映射工坊 
+                      字段映射工坊
                       <span className="text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full ring-1 ring-emerald-100 tracking-widest">LIVE</span>
                     </h2>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">多维转换流水线 &middot; 实时预览产出</p>
@@ -284,8 +295,8 @@ function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={autoMap}
                     disabled={sourceColumns.length === 0 || targetColumns.length === 0}
@@ -332,7 +343,7 @@ function App() {
                 <span>引擎状态: 运行中</span>
               </div>
             </div>
-            <Button onClick={handleDownload} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-10 text-[11px] font-black shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-95 rounded-xl flex items-center gap-2 uppercase tracking-widest">
+            <Button onClick={handleDownload} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-10 text-[11px] font-black shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-95 rounded-xl flex items-center gap-2 uppercase tracking-widest disabled:opacity-50 disabled:pointer-events-none">
               <Download size={14} />
               生成并导出结果
             </Button>
@@ -344,7 +355,7 @@ function App() {
       <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
         <DialogContent className="sm:max-w-[480px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white/95 backdrop-blur-xl">
           <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-amber-400 to-orange-400" />
-          
+
           <div className="p-6">
             <DialogHeader className="mb-4">
               <div className="flex items-center gap-3 mb-1">
@@ -399,15 +410,15 @@ function App() {
             </div>
 
             <DialogFooter className="mt-8 flex flex-row gap-3 sm:justify-end">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setValidationDialogOpen(false)}
                 className="flex-1 sm:flex-none h-10 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100"
               >
                 返回修改
               </Button>
               {validationErrors.length === 0 && (
-                <Button 
+                <Button
                   onClick={() => {
                     setValidationDialogOpen(false);
                     performExport();

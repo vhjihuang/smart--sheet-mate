@@ -17,7 +17,7 @@ interface SheetOption {
 interface SourceConfigBoxProps {
   isSheetLoaded: boolean;
   loading: boolean;
-  FilePath: string | null;
+  filePath: string | null;
   sheets: SheetOption[];
   currentSheetIndex: number;
   rows: ExcelRow[];
@@ -29,6 +29,8 @@ interface SourceConfigBoxProps {
   onSheetChange: (index: number) => void;
   onSetHeaderRowStart: (row: number) => void;
   onSetHeaderRowEnd: (row: number) => void;
+  dataRowStart: number;
+  onSetDataRowStart: (row: number) => void;
   onConfirmHeader: () => void;
   onSkipHeader: () => void;
 }
@@ -36,7 +38,7 @@ interface SourceConfigBoxProps {
 export const SourceConfigBox = ({
   isSheetLoaded,
   loading,
-  FilePath,
+  filePath,
   sheets,
   currentSheetIndex,
   rows,
@@ -48,6 +50,8 @@ export const SourceConfigBox = ({
   onSheetChange,
   onSetHeaderRowStart,
   onSetHeaderRowEnd,
+  dataRowStart,
+  onSetDataRowStart,
   onConfirmHeader,
   onSkipHeader
 }: SourceConfigBoxProps) => {
@@ -69,9 +73,9 @@ export const SourceConfigBox = ({
           <Upload size={12} className="mr-1" /> 选择Excel
         </Button>
         
-        {FilePath && (
-          <span className="text-[10px] text-gray-400 font-mono bg-gray-50 px-1.5 py-0.5 rounded truncate max-w-[80px]" title={FilePath}>
-            {FilePath.split(/[/\\]/).pop()}
+        {filePath && (
+          <span className="text-[10px] text-gray-400 font-mono bg-gray-50 px-1.5 py-0.5 rounded truncate max-w-[80px]" title={filePath}>
+            {filePath.split(/[/\\]/).pop()}
           </span>
         )}
         
@@ -88,6 +92,7 @@ export const SourceConfigBox = ({
           
           {sheets.length > 1 && (
             <Select 
+              disabled={loading}
               value={currentSheetIndex.toString()} 
               onValueChange={(v) => onSheetChange(Number(v))}
             >
@@ -147,6 +152,34 @@ export const SourceConfigBox = ({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              
+              <div className="h-4 w-px bg-gray-200 mx-1" />
+              
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">数据起始</span>
+                {rows.length > headerRowEnd + 1 ? (
+                <Select 
+                  value={dataRowStart.toString()} 
+                  onValueChange={(v) => onSetDataRowStart(Number(v))}
+                >
+                  <SelectTrigger className="w-[85px] h-7 text-[11px] bg-white px-2 border-orange-100 focus:ring-orange-100">
+                    <SelectValue placeholder="数据行">
+                      {`第 ${dataRowStart + 1} 行`}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rows.slice(headerRowEnd + 1, headerRowEnd + 50).map((_, i) => {
+                      const idx = headerRowEnd + 1 + i;
+                      return (
+                        <SelectItem key={idx} value={idx.toString()}>第 {idx + 1} 行</SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                ) : (
+                  <span className="text-[10px] text-amber-500 font-bold">无可用数据行</span>
+                )}
               </div>
             </div>
             
