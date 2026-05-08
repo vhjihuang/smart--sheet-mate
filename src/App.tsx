@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo, useRef } from "react";
 import { 
-  Upload,
   Download, 
   Layers, 
   ShieldCheck, 
   ChevronUp, 
   ChevronDown,
   LayoutGrid,
-  Columns
+  Columns,
+  Search
 } from "lucide-react";
 import { DndContext, DragOverlay, closestCenter, type CollisionDetection } from "@dnd-kit/core";
 import { Toaster } from "sonner";
@@ -15,6 +15,7 @@ import { useExcelMapping } from "@/hooks/useExcelMapping";
 import { MultiLevelTable } from "@/components/MultiLevelTable";
 import { DraggableItem } from "@/components/DraggableItem";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SourceConfigBox } from "@/components/SourceConfigBox";
 import { TemplateConfigBox } from "@/components/TemplateConfigBox";
 import { 
@@ -22,6 +23,15 @@ import {
   CollapsibleTrigger, 
   CollapsibleContent 
 } from "@/components/ui/collapsible";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { SourceColumn } from "@/types";
 
 const columnClass = "px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2 cursor-grab active:cursor-grabbing hover:border-blue-300 hover:bg-blue-50/30 transition-all";
 
@@ -62,14 +72,38 @@ function App() {
     activeData,
     isSourceMapped,
     isSheetLoaded,
-    isHeaderConfirmed
+    isHeaderConfirmed,
+    // 验证对话框相关
+    validationDialogOpen,
+    setValidationDialogOpen,
+    validationErrors,
+    validationWarnings,
+    performExport,
+    autoMap
   } = useExcelMapping();
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredSourceColumns = useMemo(() => {
+    return sourceColumns.filter(col => 
+      col.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sourceColumns, searchTerm]);
+
+  const mappingContainerRect = useRef<DOMRect | null>(null);
+
+  const onDragStartWrapper = (event: any) => {
+    const mappingContainer = document.querySelector('[data-mapping-container="true"]');
+    if (mappingContainer) {
+      mappingContainerRect.current = mappingContainer.getBoundingClientRect();
+    }
+    handleDragStart(event);
+  };
 
   const customCollisionDetection: CollisionDetection = (args) => {
     const collisions = closestCenter(args);
-    const mappingContainer = document.querySelector('[data-mapping-container="true"]');
-    if (mappingContainer) {
-      const rect = mappingContainer.getBoundingClientRect();
+    const rect = mappingContainerRect.current;
+    if (rect) {
       const { pointerCoordinates } = args;
       if (pointerCoordinates && (
         pointerCoordinates.x < rect.left || 
@@ -94,7 +128,7 @@ function App() {
         </div>
       )}
 
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={customCollisionDetection}>
+      <DndContext onDragStart={onDragStartWrapper} onDragEnd={handleDragEnd} collisionDetection={customCollisionDetection}>
         <DragOverlay zIndex={1000}>
           {activeId && activeData && (
             <div className={`${columnClass} bg-blue-600 text-white border-blue-700 shadow-xl scale-105 rotate-1 transition-transform`}>
@@ -155,8 +189,8 @@ function App() {
                   </CollapsibleTrigger>
                 </div>
 
-                <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up transition-all duration-300">
-                  <div className="flex flex-row gap-4 pt-2">
+                <CollapsibleContent forceMount className="collapsible-content">
+                  <div className="flex flex-row gap-4 pt-2 pb-1">
                     <SourceConfigBox
                       isSheetLoaded={isSheetLoaded}
                       loading={loading}
@@ -205,16 +239,29 @@ function App() {
                 </div>
                 <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black ring-1 ring-blue-100">{sourceColumns.length}</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 scrollbar-thin scrollbar-thumb-gray-200">
-                {sourceColumns.length === 0 ? (
+              <div className="px-4 pb-2">
+                <div className="relative group">
+                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                  <Input 
+                    placeholder="搜索字段..." 
+                    className="pl-8 h-8 text-[11px] bg-gray-50/50 border-none rounded-lg focus-visible:ring-1 focus-visible:ring-blue-100 placeholder:text-gray-300"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 pt-0 flex flex-col gap-2 scrollbar-thin scrollbar-thumb-gray-200">
+                {filteredSourceColumns.length === 0 ? (
                   <div className="py-20 text-center flex flex-col items-center gap-3">
                     <div className="w-10 h-10 border-2 border-dashed border-gray-200 rounded-full flex items-center justify-center">
-                      <Upload size={14} className="text-gray-200" />
+                      <Search size={14} className="text-gray-200" />
                     </div>
-                    <p className="text-[10px] text-gray-300 font-bold uppercase italic tracking-widest">等待上传</p>
+                    <p className="text-[10px] text-gray-300 font-bold uppercase italic tracking-widest">
+                      {searchTerm ? "无匹配字段" : "等待上传"}
+                    </p>
                   </div>
                 ) : (
-                  sourceColumns.map((col: any) => (
+                  filteredSourceColumns.map((col: SourceColumn) => (
                     <DraggableItem key={col.id} id={col.id} name={col.label} isDisabled={isSourceMapped(col.id)} />
                   ))
                 )}
@@ -235,19 +282,44 @@ function App() {
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">多维转换流水线 &middot; 实时预览产出</p>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={autoMap}
+                    disabled={sourceColumns.length === 0 || targetColumns.length === 0}
+                    className="h-8 border-emerald-100 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-200 text-[10px] font-black rounded-lg transition-all active:scale-95 flex items-center gap-1.5 uppercase tracking-wider"
+                  >
+                    <ShieldCheck size={12} />
+                    智能匹配
+                  </Button>
+                </div>
               </div>
               <div data-mapping-container="true" className="flex-1 overflow-auto p-4 scrollbar-thin scrollbar-thumb-gray-200">
-                <MultiLevelTable
-                  columns={targetColumns}
-                  mappings={mappings}
-                  previewData={previewData}
-                  slotConfigs={slotConfigs}
-                  firstRow={rows[0]?.DataList || []}
-                  sourceColumns={sourceColumns}
-                  onRemove={handleRemove}
-                  onUpdate={handleUpdate}
-                  onUpdateSlotConfig={handleUpdateSlotConfig}
-                />
+                {targetColumns.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-4 text-gray-400">
+                    <div className="w-16 h-16 rounded-full bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                      <Columns size={24} className="text-gray-300" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-gray-500 mb-1">等待模板数据</p>
+                      <p className="text-xs">请在上方区域配置并确认【目标模板表头】</p>
+                    </div>
+                  </div>
+                ) : (
+                  <MultiLevelTable
+                    columns={targetColumns}
+                    mappings={mappings}
+                    previewData={previewData}
+                    slotConfigs={slotConfigs}
+                    firstRow={rows[0]?.DataList || []}
+                    sourceColumns={sourceColumns}
+                    onRemove={handleRemove}
+                    onUpdate={handleUpdate}
+                    onUpdateSlotConfig={handleUpdateSlotConfig}
+                  />
+                )}
               </div>
             </main>
           </div>
@@ -267,6 +339,88 @@ function App() {
           </footer>
         </div>
       </DndContext>
+
+      {/* 验证对话框 */}
+      <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white/95 backdrop-blur-xl">
+          <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-amber-400 to-orange-400" />
+          
+          <div className="p-6">
+            <DialogHeader className="mb-4">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="p-2 bg-amber-50 rounded-xl">
+                  {validationErrors.length > 0 ? (
+                    <LayoutGrid size={20} className="text-red-500" />
+                  ) : (
+                    <ShieldCheck size={20} className="text-amber-500" />
+                  )}
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-black text-gray-800 tracking-tight">
+                    {validationErrors.length > 0 ? "映射验证失败" : "导出预警提示"}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs font-bold text-gray-400 uppercase tracking-tighter">
+                    在正式导出前，引擎发现了以下潜在问题
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin">
+              {validationErrors.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    阻塞性错误 ({validationErrors.length})
+                  </h4>
+                  {validationErrors.map((err, i) => (
+                    <div key={i} className="p-3 bg-red-50/50 border border-red-100 rounded-2xl flex gap-3 items-start">
+                      <LayoutGrid size={14} className="text-red-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-relaxed text-red-800 font-medium">{err}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {validationWarnings.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    改进建议 ({validationWarnings.length})
+                  </h4>
+                  {validationWarnings.map((warn, i) => (
+                    <div key={i} className="p-3 bg-amber-50/50 border border-amber-100 rounded-2xl flex gap-3 items-start">
+                      <ShieldCheck size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-relaxed text-amber-800 font-medium">{warn}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="mt-8 flex flex-row gap-3 sm:justify-end">
+              <Button 
+                variant="ghost" 
+                onClick={() => setValidationDialogOpen(false)}
+                className="flex-1 sm:flex-none h-10 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100"
+              >
+                返回修改
+              </Button>
+              {validationErrors.length === 0 && (
+                <Button 
+                  onClick={() => {
+                    setValidationDialogOpen(false);
+                    performExport();
+                  }}
+                  className="flex-1 sm:flex-none h-10 rounded-xl bg-gray-900 text-white hover:bg-black text-xs font-black px-6 shadow-xl shadow-black/10"
+                >
+                  忽略并继续导出
+                </Button>
+              )}
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

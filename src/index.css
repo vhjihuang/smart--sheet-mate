@@ -144,6 +144,17 @@
 }
 
 @layer utilities {
+  .collapsible-content {
+    overflow: hidden;
+    will-change: height, opacity;
+  }
+  .collapsible-content[data-state="open"] {
+    animation: collapsible-down 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .collapsible-content[data-state="closed"] {
+    animation: collapsible-up 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
   @keyframes collapsible-down {
     from { height: 0; opacity: 0; }
     to { height: var(--radix-collapsible-content-height); opacity: 1; }
@@ -151,13 +162,6 @@
   @keyframes collapsible-up {
     from { height: var(--radix-collapsible-content-height); opacity: 1; }
     to { height: 0; opacity: 0; }
-  }
-
-  .animate-collapsible-down {
-    animation: collapsible-down 0.3s ease-out;
-  }
-  .animate-collapsible-up {
-    animation: collapsible-up 0.3s ease-out;
   }
 }
 
