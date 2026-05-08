@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { ExcelRow, SourceColumn, TargetColumn, TemplateResponse } from "@/types";
+import { useState, useMemo } from "react";
+import type { ExcelRow, TargetColumn, TemplateResponse } from "@/types";
 import { safeCallParse } from "@/utils/bridge";
 import { showToast } from "@/utils/toast";
 import { parseSourceColumns, parseTargetColumnsFromRows } from "@/utils/excel";
@@ -28,6 +28,7 @@ interface UseWorkbookStateOptions {
   onSlotConfigsReset: () => void;
   onPreviewReset: () => void;
   onErrorReset: () => void;
+  hasMappings: () => boolean;
 }
 
 export const useWorkbookState = ({
@@ -35,6 +36,7 @@ export const useWorkbookState = ({
   onSlotConfigsReset,
   onPreviewReset,
   onErrorReset,
+  hasMappings,
 }: UseWorkbookStateOptions) => {
   const [loading, setLoading] = useState(false);
   const [filePath, setFilePath] = useState<string | null>(null);
@@ -42,11 +44,25 @@ export const useWorkbookState = ({
   const [currentSheetIndex, setCurrentSheetIndex] = useState(0);
   const [last, setLast] = useState(0);
   const [rows, setRows] = useState<ExcelRow[]>([]);
-  const [sourceColumns, setSourceColumns] = useState<SourceColumn[]>([]);
+  // 使用 confirmedRange 来驱动 sourceColumns 的派生，确保状态同步
+  const [confirmedRange, setConfirmedRange] = useState<{ start: number; end: number } | null>(null);
+  
   const [isSheetLoaded, setIsSheetLoaded] = useState(false);
   const [headerRowStart, setHeaderRowStart] = useState(0);
   const [headerRowEnd, setHeaderRowEnd] = useState(0);
+  const [dataRowStart, setDataRowStart] = useState(1); // 新增：数据起始行
   const [isHeaderConfirmed, setIsHeaderConfirmed] = useState(false);
+
+  // 派生源字段列表
+  const sourceColumns = useMemo(() => {
+    if (!rows || rows.length === 0) return [];
+    
+    // 如果已确认表头，使用确认的范围；否则默认使用第一行（索引 0）
+    const start = confirmedRange ? confirmedRange.start : 0;
+    const end = confirmedRange ? confirmedRange.end : 0;
+    
+    return parseSourceColumns(rows, start, end);
+  }, [rows, confirmedRange]);
 
   const [templatePath, setTemplatePath] = useState<string | null>(null);
   const [templateRows, setTemplateRows] = useState<ExcelRow[]>([]);
@@ -64,24 +80,23 @@ export const useWorkbookState = ({
 
   const applyRows = (loadedRows: ExcelRow[]) => {
     if (loadedRows.length === 0) {
-      setSourceColumns([]);
+      setConfirmedRange(null);
       setRows([]);
       return;
     }
 
-    const titles = loadedRows[0].DataList;
-    setSourceColumns(titles.map((title, index) => ({ id: `src-${index}`, label: title || `列${index + 1}` })));
-    
     // 性能优化：React State 仅保留前 100 行用于前端预览，防止大文件导致内存溢出
     setRows(loadedRows.slice(0, 100));
+    setConfirmedRange(null); // 加载新文件时重置确认范围，默认显示第一行
   };
 
   const resetSourceFlow = () => {
     setSheets([]);
     setRows([]);
-    setSourceColumns([]);
+    setConfirmedRange(null);
     setHeaderRowStart(0);
     setHeaderRowEnd(0);
+    setDataRowStart(1);
     setIsSheetLoaded(false);
     setIsHeaderConfirmed(false);
     onMappingsReset();
@@ -93,6 +108,18 @@ export const useWorkbookState = ({
   const loadSheetData = async (selectedFilePath: string, sheetIndex = 0, lastValue = last) => {
     setLoading(true);
     try {
+      // Step 1: 请求 page=0 获取 Sheet 列表
+      const sheetListData = await loadExcelData(selectedFilePath, 0, lastValue);
+      if (sheetListData.LoadStatus !== 1) {
+        showToast("error", sheetListData.Message || "加载失败");
+        return;
+      }
+
+      if (sheetListData.Data?.Sheets) {
+        setSheets(sheetListData.Data.Sheets);
+      }
+
+      // Step 2: 加载指定 Sheet 的数据
       const page = sheetIndex + 1;
       const data = await loadExcelData(selectedFilePath, page, lastValue);
       if (data.LoadStatus !== 1) {
@@ -100,27 +127,13 @@ export const useWorkbookState = ({
         return;
       }
 
-      if (data.Data?.Sheets) {
-        if (data.Data.Sheets.length === 1) {
-          setCurrentSheetIndex(0);
-          setSheets(data.Data.Sheets);
-          const singleData = await loadExcelData(selectedFilePath, 1, lastValue);
-          if (singleData.Data?.Rows) {
-            applyRows(singleData.Data.Rows);
-          }
-          if (singleData.Data?.Last !== undefined) {
-            setLast(singleData.Data.Last);
-          }
-        } else {
-          setSheets(data.Data.Sheets);
-        }
-      } else if (data.Data) {
-        if (data.Data.Rows) {
-          applyRows(data.Data.Rows);
-        }
-        if (data.Data.Last !== undefined) {
-          setLast(data.Data.Last);
-        }
+      setCurrentSheetIndex(sheetIndex);
+
+      if (data.Data?.Rows) {
+        applyRows(data.Data.Rows);
+      }
+      if (data.Data?.Last !== undefined) {
+        setLast(data.Data.Last);
       }
 
       setIsSheetLoaded(true);
@@ -185,7 +198,7 @@ export const useWorkbookState = ({
 
       setCurrentSheetIndex(value);
       setRows([]);
-      setSourceColumns([]);
+      setConfirmedRange(null);
       setIsSheetLoaded(false);
       setIsHeaderConfirmed(false);
       onMappingsReset();
@@ -211,6 +224,15 @@ export const useWorkbookState = ({
   };
 
   const confirmHeader = async () => {
+    if (!filePath) {
+      showToast("error", "请先选择源文件");
+      return;
+    }
+    if (headerRowStart > headerRowEnd) {
+      showToast("error", "起始行不能大于结束行");
+      return;
+    }
+    
     try {
       const response = await safeCallParse<SimpleStatusResponse>("Excel_SetHeaderRows", {
         FilePath: filePath,
@@ -219,7 +241,10 @@ export const useWorkbookState = ({
       });
 
       if (response.Status === 1) {
-        setSourceColumns(parseSourceColumns(rows, headerRowStart, headerRowEnd));
+        setConfirmedRange({ start: headerRowStart, end: headerRowEnd });
+        if (dataRowStart < headerRowEnd + 1) {
+          setDataRowStart(headerRowEnd + 1);
+        }
         onMappingsReset();
         setIsHeaderConfirmed(true);
         showToast("success", "表头已确认");
@@ -236,7 +261,8 @@ export const useWorkbookState = ({
   const skipHeader = () => {
     setHeaderRowStart(0);
     setHeaderRowEnd(0);
-    setSourceColumns(parseSourceColumns(rows, 0, 0));
+    setDataRowStart(1);
+    setConfirmedRange({ start: 0, end: 0 });
     setIsHeaderConfirmed(true);
     onMappingsReset();
     showToast("success", "已跳过");
@@ -279,6 +305,22 @@ export const useWorkbookState = ({
   };
 
   const confirmTemplateHeader = async () => {
+    if (!templatePath) {
+      showToast("error", "请先上传模板文件");
+      return;
+    }
+    if (templateHeaderRowStart > templateHeaderRowEnd) {
+      showToast("error", "模板表头起始行不能大于结束行");
+      return;
+    }
+
+    if (hasMappings()) {
+      const confirmed = window.confirm(
+        "重新确认模板表头将清空当前的映射配置，是否继续？",
+      );
+      if (!confirmed) return;
+    }
+
     const nextTargetColumns = parseTargetColumnsFromRows(
       templateRows,
       templateHeaderRowStart,
@@ -305,6 +347,16 @@ export const useWorkbookState = ({
     }
   };
 
+  const onHeaderRowStartChange = (value: number) => {
+    setHeaderRowStart(value);
+    if (isHeaderConfirmed) setIsHeaderConfirmed(false);
+  };
+
+  const onHeaderRowEndChange = (value: number) => {
+    setHeaderRowEnd(value);
+    if (isHeaderConfirmed) setIsHeaderConfirmed(false);
+  };
+
   return {
     loading,
     setLoading,
@@ -318,9 +370,11 @@ export const useWorkbookState = ({
     targetColumns,
     isSheetLoaded,
     headerRowStart,
-    setHeaderRowStart,
+    setHeaderRowStart: onHeaderRowStartChange,
     headerRowEnd,
-    setHeaderRowEnd,
+    setHeaderRowEnd: onHeaderRowEndChange,
+    dataRowStart,
+    setDataRowStart,
     isHeaderConfirmed,
     templatePath,
     templateRows,
