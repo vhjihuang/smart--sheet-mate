@@ -4,6 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { Settings, Trash2, GripVertical, Wand2, Scissors, Type, Eye, ChevronDown, Check } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import type { MappingNode, TransformStep, TransformType } from "@/types";
+import type { TextTransformStep, CropTransformStep } from "shared/transform";
 import { CROP_SHORTCUTS, TEACHER_PRESETS } from "@/constants";
 import { applyTransformPipeline } from "@/utils/transformPreview";
 
@@ -63,7 +64,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const steps = useMemo(() => node.steps || [], [node.steps]);
+  const steps: TransformStep[] = useMemo(() => node.steps || [], [node.steps]);
   const forceText = node.forceText || false;
   const [showPresets, setShowPresets] = useState(false);
 
@@ -71,9 +72,9 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
   // 辅助函数：提取平铺的配置
   // steps 通常只有 0-5 个元素，直接计算比 useMemo 更快
   // -------------------------
-  const prefixStep = steps.find((step): step is Extract<TransformStep, { type: "PREFIX" }> => step.type === "PREFIX");
-  const suffixStep = steps.find((step): step is Extract<TransformStep, { type: "SUFFIX" }> => step.type === "SUFFIX");
-  const cropStep = steps.find((step): step is Extract<TransformStep, { type: "CROP" }> => step.type === "CROP");
+  const prefixStep = steps.find((step): step is TextTransformStep => step.type === "PREFIX");
+  const suffixStep = steps.find((step): step is TextTransformStep => step.type === "SUFFIX");
+  const cropStep = steps.find((step): step is CropTransformStep => step.type === "CROP");
   const prefix = prefixStep?.params.text || "";
   const suffix = suffixStep?.params.text || "";
   const cropStart = cropStep?.params.start ?? null;
@@ -178,14 +179,14 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
             </Popover.Trigger>
             <Popover.Portal>
               <Popover.Content
-                className="bg-white p-5 shadow-[0_10px_40px_rgba(0,0,0,0.15)] rounded-3xl border border-gray-100 w-80 z-[100] animate-in fade-in zoom-in-95 max-h-[70vh] overflow-y-auto"
+                className="bg-white p-5 shadow-[0_10px_40px_rgba(0,0,0,0.15)] rounded-3xl border border-gray-100 w-80 z-100 animate-in fade-in zoom-in-95 max-h-[70vh] overflow-y-auto"
                 sideOffset={10}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="flex flex-col gap-3">
                   {/* 实时预览区域 */}
                   {steps.length > 0 && (
-                    <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                    <div className="p-3 bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                       <div className="flex items-center gap-1.5 mb-2">
                         <Eye size={10} className="text-blue-600" />
                         <span className="text-[9px] text-blue-600 font-black uppercase tracking-wider">实时预览</span>
@@ -331,7 +332,7 @@ export const SortableItem = ({ node, sampleValue = "样例数据", onRemove, onU
                         previewEl?.classList.add('ring-2', 'ring-emerald-400', 'ring-offset-2');
                         setTimeout(() => previewEl?.classList.remove('ring-2', 'ring-emerald-400', 'ring-offset-2'), 1500);
                       }}
-                      className="w-full py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-[10px] font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+                      className="w-full py-2 bg-linear-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-[10px] font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
                     >
                       <Eye size={11} /> 查看预览结果 ↓
                     </button>
