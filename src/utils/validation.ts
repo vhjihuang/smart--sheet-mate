@@ -30,6 +30,11 @@ export function validateMappings(
 
   const getTargetLabel = (id: string) => targetLabelMap.get(id) || id;
 
+  if (sourceColumns.length === 0 && Object.values(mappings).some((nodes) => nodes.length > 0)) {
+    errors.push('源字段列表为空，请确认表头设置是否正确');
+    return { errors, warnings };
+  }
+
   // 1. 检查源列索引有效性
   for (const [targetId, nodes] of Object.entries(mappings)) {
     for (const node of nodes) {
@@ -129,12 +134,6 @@ export function validateMappings(
         warnings.push(`目标列 "${getTargetLabel(targetId)}" 有 ${nodes.length} 个源字段，但未配置聚合方式`);
       }
     }
-  }
-
-  // 5. 检查是否有空映射
-  const emptyMappings = Object.entries(mappings).filter(([, nodes]) => nodes.length === 0);
-  if (emptyMappings.length > 0) {
-    // 这不是错误，只是提示
   }
 
   return {

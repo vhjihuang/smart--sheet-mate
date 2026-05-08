@@ -23,7 +23,7 @@ describe('validateMappings', () => {
     expect(result.errors[0]).not.toContain('col-3');
   });
 
-  it('未提供 targetColumns 时应回退到 ID', () => {
+  it('未提供 targetColumns 且 sourceColumns 为空时应提示源字段列表为空', () => {
     const mappings: Record<string, MappingNode[]> = {
       'col-3': [{ id: 'm1', sourceId: 'src-99', sourceLabel: '不存在', steps: [], forceText: false }],
     };
@@ -33,7 +33,7 @@ describe('validateMappings', () => {
 
     const result = validateMappings(mappings, sourceColumns, rows, slotConfigs);
 
-    expect(result.errors[0]).toContain('col-3');
+    expect(result.errors[0]).toContain('源字段列表为空');
   });
 
   it('有效映射应通过验证', () => {
