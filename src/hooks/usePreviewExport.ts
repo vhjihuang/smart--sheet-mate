@@ -28,6 +28,7 @@ interface UsePreviewExportOptions {
   templateHeaderRowEnd: number;
   currentSheetIndex: number;
   templateRows: ExcelRow[];
+  dataRowStart: number;
   isHeaderConfirmed: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -46,6 +47,7 @@ export const usePreviewExport = ({
   templateHeaderRowEnd,
   currentSheetIndex,
   templateRows,
+  dataRowStart,
   isHeaderConfirmed,
   setLoading,
 }: UsePreviewExportOptions) => {
@@ -59,8 +61,10 @@ export const usePreviewExport = ({
   const fetchPreviewData = useCallback(() => {
     if (rows.length === 0) return;
 
-    // 修复：跳过表头行进行采样
-    const sampleStart = headerRowEnd > 0 ? headerRowEnd : 1;
+    let sampleStart = dataRowStart;
+    if (sampleStart >= rows.length) {
+      sampleStart = Math.max(0, rows.length - 5);
+    }
     const response = previewTransform({
       SourceSamples: rows.slice(sampleStart, sampleStart + 5),
       Mappings: mappings,
@@ -79,7 +83,7 @@ export const usePreviewExport = ({
     });
 
     setPreviewData(adjustedResults);
-  }, [mappings, rows, slotConfigs, headerRowEnd]);
+  }, [mappings, rows, slotConfigs, dataRowStart]);
 
   useEffect(() => {
     if (previewTimer.current) {
@@ -112,6 +116,7 @@ export const usePreviewExport = ({
         SourcePath: filePath,
         TemplatePath: templatePath,
         SourceHeaderRows: { Start: headerRowStart, End: headerRowEnd },
+        DataRowStart: dataRowStart,
         TemplateHeaderRows: { Start: templateHeaderRowStart, End: templateHeaderRowEnd },
         CurrentSheetIndex: currentSheetIndex,
         TransformRules: leafColumns.map((column) => ({
@@ -154,6 +159,7 @@ export const usePreviewExport = ({
     templateHeaderRowEnd,
     templateHeaderRowStart,
     templatePath,
+    dataRowStart,
   ]);
 
   const handleDownload = useCallback(async () => {
@@ -185,7 +191,7 @@ export const usePreviewExport = ({
       return;
     }
 
-    const validation = validateMappings(mappings, sourceColumns, rows, slotConfigs);
+    const validation = validateMappings(mappings, sourceColumns, rows, slotConfigs, targetColumns);
     if (!validation.valid || validation.warnings.length > 0) {
       setValidationErrors(validation.errors);
       setValidationWarnings(validation.warnings);
@@ -202,6 +208,7 @@ export const usePreviewExport = ({
     rows,
     slotConfigs,
     sourceColumns,
+    targetColumns,
     templatePath,
     templateRows.length,
   ]);
