@@ -13,7 +13,7 @@ export const ExcelPreview = ({ rows, title }: ExcelPreviewProps) => {
   return (
     <div className="mt-3 border border-gray-100 rounded-lg overflow-hidden bg-white shadow-sm flex flex-col">
       {/* Header */}
-      <div className="bg-gray-50/80 px-2 py-1.5 border-b border-gray-100 flex justify-between items-center bg-white/50 backdrop-blur-sm z-10 sticky top-0">
+      <div className="bg-gray-50/80 px-2 py-1.5 border-b border-gray-100 flex justify-between items-center backdrop-blur-sm z-10 sticky top-0">
         <div className="flex items-center gap-1.5">
           <div className="p-1 bg-blue-100 rounded">
             <FileSpreadsheet size={10} className="text-blue-600" />

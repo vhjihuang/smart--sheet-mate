@@ -141,7 +141,7 @@ function App() {
         </DragOverlay>
 
         <div className="flex-1 flex flex-col pt-12 px-6 pb-12 gap-6 min-h-0 overflow-hidden">
-          <section className="flex-shrink-0">
+          <section className="shrink-0">
             <Collapsible open={!isConfigCollapsed} onOpenChange={(open) => setIsConfigCollapsed(!open)}>
               <div
                 className={`
@@ -153,7 +153,7 @@ function App() {
                 <div className={`flex items-center justify-between ${!isConfigCollapsed ? "mb-4" : ""} h-9 transition-all duration-300`}>
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-3 cursor-pointer group">
-                      <div className="flex items-center justify-center transition-all duration-300 w-9 h-9 bg-indigo-600 rounded-xl flex-shrink-0">
+                      <div className="flex items-center justify-center transition-all duration-300 w-9 h-9 bg-indigo-600 rounded-xl shrink-0">
                         <LayoutGrid className="text-white transition-transform duration-300 group-hover:scale-110" size={18} />
                       </div>
                       <div className="flex flex-col justify-center h-9 font-sans overflow-hidden">
@@ -177,7 +177,7 @@ function App() {
                       `}
                     >
                       <div className="flex items-center gap-2 min-w-0 pointer-events-none">
-                        <div className="w-4 flex items-center justify-center flex-shrink-0">
+                        <div className="w-4 flex items-center justify-center shrink-0">
                           {isConfigCollapsed ? (
                             <ChevronDown size={14} className="stroke-[3px]" />
                           ) : (
@@ -240,7 +240,7 @@ function App() {
 
           {/* 2. Workspace Area */}
           <div className="flex-1 flex flex-row gap-6 min-h-0 overflow-hidden">
-            <aside className="w-64 flex-shrink-0 flex flex-col bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <aside className="w-64 shrink-0 flex flex-col bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white relative z-10 shadow-sm">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-50 rounded-lg">
@@ -336,7 +336,7 @@ function App() {
           </div>
 
           {/* 3. Footer Area */}
-          <footer className="flex-shrink-0 flex items-center justify-between py-1 px-1 mt-auto">
+          <footer className="shrink-0 flex items-center justify-between py-1 px-1 mt-auto">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
                 <ShieldCheck size={12} className="text-green-500" />
@@ -354,7 +354,7 @@ function App() {
       {/* 验证对话框 */}
       <Dialog open={validationDialogOpen} onOpenChange={setValidationDialogOpen}>
         <DialogContent className="sm:max-w-[480px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white/95 backdrop-blur-xl">
-          <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 via-amber-400 to-orange-400" />
+          <div className="h-1.5 w-full bg-linear-to-r from-orange-400 via-amber-400 to-orange-400" />
 
           <div className="p-6">
             <DialogHeader className="mb-4">
