@@ -29,6 +29,10 @@
     "mac": {
       "target": [
         {
+          "target": "dmg",
+          "arch": ["arm64"]
+        },
+        {
           "target": "zip",
           "arch": ["arm64"]
         }
@@ -37,7 +41,12 @@
       "category": "public.app-category.productivity"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ],
       "icon": "public/icon.ico"
     },
     "nsis": {

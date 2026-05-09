@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Menu } from 'electron';
 import * as path from 'path';
 import { selectSourceFile, loadSourceData, loadTemplateFile } from './services/excelReader';
 import { previewTransform } from './services/transformEngine';
@@ -10,6 +10,18 @@ const isDev = !app.isPackaged;
 
 if (isDev) {
   process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
+}
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
 }
 
 function createWindow() {
@@ -25,12 +37,18 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false,
     },
-    // 无菜单栏，教师用户不需要
     autoHideMenuBar: true,
   });
 
-  // 移除默认菜单
-  mainWindow.setMenu(null);
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      { role: 'appMenu' },
+      { role: 'editMenu' },
+      { role: 'windowMenu' },
+    ]));
+  } else {
+    mainWindow.setMenu(null);
+  }
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');

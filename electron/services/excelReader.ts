@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 
@@ -111,6 +111,7 @@ export async function selectSourceFile(win: BrowserWindow): Promise<{
   try {
     const result = await dialog.showOpenDialog(win, {
       title: '选择源数据文件',
+      defaultPath: app.getPath('documents'),
       filters: [
         { name: 'Excel 文件', extensions: ['xls', 'xlsx'] },
         { name: 'CSV 文件', extensions: ['csv'] },
@@ -128,7 +129,7 @@ export async function selectSourceFile(win: BrowserWindow): Promise<{
 
     // 检查文件是否可访问
     try {
-      fs.accessSync(filePath, fs.constants.R_OK);
+      await fs.promises.access(filePath, fs.constants.R_OK);
     } catch {
       return { SelectStatus: 0, Message: '文件不存在或无法访问' };
     }
@@ -145,16 +146,15 @@ export async function selectSourceFile(win: BrowserWindow): Promise<{
  * Page=0 → 返回 Sheet 列表
  * Page>=1 → 返回指定 Sheet 的行数据
  */
-export function loadSourceData(params: {
+export async function loadSourceData(params: {
   FilePath: string;
   Page: number;
   Last: number;
-}): LoadSourceResult {
+}): Promise<LoadSourceResult> {
   const { FilePath: filePath, Page: page } = params;
 
-  // 检查文件存在
   try {
-    fs.accessSync(filePath, fs.constants.R_OK);
+    await fs.promises.access(filePath, fs.constants.R_OK);
   } catch {
     return { LoadStatus: 0, Message: '源文件不存在或无法访问，请重新选择' };
   }
@@ -238,6 +238,7 @@ export async function loadTemplateFile(win: BrowserWindow): Promise<TemplateLoad
   try {
     const result = await dialog.showOpenDialog(win, {
       title: '选择目标模板文件',
+      defaultPath: app.getPath('documents'),
       filters: [
         { name: 'Excel 文件', extensions: ['xls', 'xlsx'] },
         { name: 'CSV 文件', extensions: ['csv'] },
@@ -254,7 +255,7 @@ export async function loadTemplateFile(win: BrowserWindow): Promise<TemplateLoad
 
     // 检查文件可访问
     try {
-      fs.accessSync(filePath, fs.constants.R_OK);
+      await fs.promises.access(filePath, fs.constants.R_OK);
     } catch {
       return { LoadStatus: 0, FilePath: filePath, Message: '模板文件不存在或无法访问' };
     }

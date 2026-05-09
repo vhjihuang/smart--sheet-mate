@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import * as fs from 'fs';
@@ -146,14 +146,13 @@ export async function exportToTemplate(
 
   // ── 前置检查：源文件 ──
   try {
-    fs.accessSync(payload.SourcePath, fs.constants.R_OK);
+    await fs.promises.access(payload.SourcePath, fs.constants.R_OK);
   } catch {
     return { Status: 0, Message: '源文件不存在或无法访问，请重新选择' };
   }
 
-  // ── 前置检查：模板文件 ──
   try {
-    fs.accessSync(payload.TemplatePath, fs.constants.R_OK);
+    await fs.promises.access(payload.TemplatePath, fs.constants.R_OK);
   } catch {
     return { Status: 0, Message: '模板文件不存在或无法访问，请重新上传' };
   }
@@ -171,7 +170,7 @@ export async function exportToTemplate(
 
   const saveResult = await dialog.showSaveDialog(win, {
     title: '选择导出保存位置',
-    defaultPath: defaultName,
+    defaultPath: path.join(app.getPath('documents'), defaultName),
     filters: [
       { name: 'Excel 文件', extensions: ['xlsx'] },
       { name: 'CSV 文件', extensions: ['csv'] },
@@ -186,7 +185,7 @@ export async function exportToTemplate(
 
   // ── 检查输出路径权限 ──
   try {
-    fs.accessSync(path.dirname(outputPath), fs.constants.W_OK);
+    await fs.promises.access(path.dirname(outputPath), fs.constants.W_OK);
   } catch {
     return { Status: 0, Message: '没有写入权限，请选择其他保存位置' };
   }
