@@ -1,0 +1,92 @@
+.driver-overlay {
+  fill-rule: evenodd !important;
+  clip-rule: evenodd !important;
+}
+
+.driver-overlay path {
+  fill-rule: evenodd !important;
+  clip-rule: evenodd !important;
+}
+
+.driver-popover.tour-popover {
+  border-radius: 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background-color: #ffffff !important;
+  color: #1a1a2e !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  font-family: inherit !important;
+  max-width: 360px !important;
+  position: fixed !important;
+  z-index: 2147483647 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-title {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.4 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-description {
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: #334155 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-progress-text {
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-next-btn,
+.driver-popover.tour-popover .driver-popover-prev-btn,
+.driver-popover.tour-popover .driver-popover-close-btn {
+  text-shadow: none !important;
+}
+
+.driver-popover.tour-popover .driver-popover-next-btn {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 600 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-next-btn:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-prev-btn {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-prev-btn:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-close-btn {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: none !important;
+}
+
+.driver-popover.tour-popover .driver-popover-close-btn:hover {
+  color: #475569 !important;
+}
+
+.driver-popover.tour-popover .driver-popover-arrow-side-left {
+  border-left-color: #ffffff !important;
+}
+
+.driver-popover.tour-popover .driver-popover-arrow-side-right {
+  border-right-color: #ffffff !important;
+}
+
+.driver-popover.tour-popover .driver-popover-arrow-side-top {
+  border-top-color: #ffffff !important;
+}
+
+.driver-popover.tour-popover .driver-popover-arrow-side-bottom {
+  border-bottom-color: #ffffff !important;
+}

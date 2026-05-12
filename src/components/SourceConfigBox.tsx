@@ -58,7 +58,7 @@ export const SourceConfigBox = ({
   return (
     <section className="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm min-w-0 flex flex-col gap-2">
       {/* File Selection Header */}
-      <div className="flex items-center gap-2.5 flex-wrap pb-3 border-b border-gray-100">
+      <div className="flex items-center gap-2.5 flex-wrap pb-3 border-b border-gray-100" data-tour-id="tour-source-file">
         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSheetLoaded ? "bg-green-500 text-white" : "bg-blue-500 text-white"}`}>
           {isSheetLoaded ? <Check size={14} /> : "1"}
         </div>
@@ -79,7 +79,7 @@ export const SourceConfigBox = ({
           </span>
         )}
         
-        <div className="flex gap-1 ml-auto shrink-0">
+        <div className="flex gap-1 ml-auto shrink-0" data-tour-id="tour-source-load">
           <Button 
             onClick={onLoadFile} 
             disabled={loading} 
@@ -114,7 +114,7 @@ export const SourceConfigBox = ({
         <>
           <ExcelPreview rows={rows} title="源文件" />
           
-          <div className="pt-1.5 flex justify-between items-center bg-gray-50/40 p-2 rounded-lg">
+          <div className="pt-1.5 flex justify-between items-center bg-gray-50/40 p-2 rounded-lg" data-tour-id="tour-source-header">
             <div className="flex items-center gap-2 min-w-0">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isHeaderConfirmed ? "bg-green-500 text-white" : "bg-blue-500 text-white"}`}>
                 {isHeaderConfirmed ? <Check size={12} /> : "2"}

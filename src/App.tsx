@@ -7,17 +7,21 @@ import {
   ChevronDown,
   LayoutGrid,
   Columns,
-  Search
+  Search,
+  HelpCircle
 } from "lucide-react";
 import { DndContext, DragOverlay, closestCenter, type CollisionDetection, type DragStartEvent } from "@dnd-kit/core";
 import { Toaster } from "sonner";
 import { useExcelMapping } from "@/hooks/useExcelMapping";
+import { useTour } from "@/hooks/useTour";
+import { TourGuide } from "@/components/TourGuide";
 import { MultiLevelTable } from "@/components/MultiLevelTable";
 import { DraggableItem } from "@/components/DraggableItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SourceConfigBox } from "@/components/SourceConfigBox";
 import { TemplateConfigBox } from "@/components/TemplateConfigBox";
+import "@/styles/tour.css";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -37,6 +41,7 @@ const columnClass = "px-3 py-2 bg-white border border-gray-200 rounded-lg text-s
 
 function App() {
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
+  const { tourActive, markTourCompleted, resetTour } = useTour();
   const {
     mappings,
     slotConfigs,
@@ -123,6 +128,7 @@ function App() {
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50 font-sans antialiased overflow-hidden select-none">
       <Toaster position="top-right" richColors />
+      <TourGuide active={tourActive} onComplete={markTourCompleted} onSkip={markTourCompleted} />
 
       {error && (
         <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs shadow-sm flex items-center gap-2">
@@ -141,7 +147,7 @@ function App() {
         </DragOverlay>
 
         <div className="flex-1 flex flex-col pt-12 px-6 pb-12 gap-6 min-h-0 overflow-hidden">
-          <section className="shrink-0">
+          <section className="shrink-0" data-tour-id="tour-config-center">
             <Collapsible open={!isConfigCollapsed} onOpenChange={(open) => setIsConfigCollapsed(!open)}>
               <div
                 className={`
@@ -240,7 +246,7 @@ function App() {
 
           {/* 2. Workspace Area */}
           <div className="flex-1 flex flex-row gap-6 min-h-0 overflow-hidden">
-            <aside className="w-64 shrink-0 flex flex-col bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <aside className="w-64 shrink-0 flex flex-col bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden" data-tour-id="tour-source-fields">
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white relative z-10 shadow-sm">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-50 rounded-lg">
@@ -279,7 +285,7 @@ function App() {
               </div>
             </aside>
 
-            <main className="flex-1 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-w-0">
+            <main className="flex-1 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-w-0" data-tour-id="tour-mapping-area">
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white/50 backdrop-blur-sm relative z-10 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-50 rounded-xl">
@@ -343,12 +349,22 @@ function App() {
                 <span>引擎状态: 运行中</span>
               </div>
             </div>
-            <Button onClick={handleDownload} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-10 text-[11px] font-black shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-95 rounded-xl flex items-center gap-2 uppercase tracking-widest disabled:opacity-50 disabled:pointer-events-none">
+            <Button onClick={handleDownload} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 h-10 text-[11px] font-black shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-95 rounded-xl flex items-center gap-2 uppercase tracking-widest disabled:opacity-50 disabled:pointer-events-none" data-tour-id="tour-export-btn">
               <Download size={14} />
               生成并导出结果
             </Button>
           </footer>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={resetTour}
+          className="fixed bottom-5 left-5 h-10 w-10 p-0 rounded-full bg-white/90 backdrop-blur-sm border border-gray-200 shadow-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 hover:shadow-xl transition-all duration-200 z-50"
+          title="使用帮助"
+        >
+          <HelpCircle size={18} />
+        </Button>
       </DndContext>
 
       {/* 验证对话框 */}

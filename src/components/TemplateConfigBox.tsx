@@ -36,7 +36,7 @@ export const TemplateConfigBox = ({
   return (
     <section className="flex-1 bg-white border border-gray-200 rounded-xl p-4 shadow-sm min-w-0 flex flex-col gap-2">
       {/* Target Template Header */}
-      <div className="flex items-center gap-2.5 flex-wrap pb-3 border-b border-gray-100">
+      <div className="flex items-center gap-2.5 flex-wrap pb-3 border-b border-gray-100" data-tour-id="tour-template-upload">
         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${templateRows.length > 0 ? "bg-green-500 text-white" : "bg-blue-500 text-white"}`}>
           {templateRows.length > 0 ? <Check size={14} /> : "3"}
         </div>
@@ -63,7 +63,7 @@ export const TemplateConfigBox = ({
         <>
           <ExcelPreview rows={templateRows} title="模板" />
           
-          <div className="pt-1.5 flex justify-between items-center bg-gray-50/40 p-2 rounded-lg">
+          <div className="pt-1.5 flex justify-between items-center bg-gray-50/40 p-2 rounded-lg" data-tour-id="tour-template-header">
             <div className="flex items-center gap-2 min-0">
               <div className="w-5 h-5 bg-indigo-500 text-white rounded-full flex items-center justify-center text-[10px] font-black shrink-0">4</div>
               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">模板层级</span>

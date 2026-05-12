@@ -12,6 +12,8 @@ if (isDev) {
   process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 }
 
+app.commandLine.appendSwitch('disable-features', 'MojoIpcz');
+
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
